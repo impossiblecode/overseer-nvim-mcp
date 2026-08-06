@@ -26,7 +26,7 @@ pnpm exec stylua --check src/lua
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 lua-language-server --check "$PWD" --checklevel=Warning \
-  --check_out_path="$tmp/luals.json" --logpath="$tmp" >/dev/null
+  --check_out_path="$tmp/luals.json" --logpath="$tmp" >/dev/null || true
 node -e '
   const fs = require("fs");
   const p = process.argv[1];

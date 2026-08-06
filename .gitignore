@@ -10,3 +10,5 @@ dist/
 !ci/fixtures/vscode/.vscode/**
 
 .luals/
+# where CI checks out overseer.nvim
+.overseer-nvim/

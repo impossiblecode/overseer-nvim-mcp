@@ -3,7 +3,7 @@
   "runtime": { "version": "LuaJIT" },
   "workspace": {
     "library": [".luals/nvim-runtime"],
-    "ignoreDir": ["node_modules", "dist", "ci", "temp", ".claude", ".luals"],
+    "ignoreDir": ["node_modules", "dist", "ci", "temp", ".claude", ".luals", ".overseer-nvim"],
     "checkThirdParty": false
   },
   "diagnostics": {
