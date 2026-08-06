@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime": { "version": "LuaJIT" },
+  "workspace": {
+    "library": [".luals/nvim-runtime"],
+    "ignoreDir": ["node_modules", "dist", "ci", "temp", ".claude", ".luals"],
+    "checkThirdParty": false
+  },
+  "diagnostics": {
+    "globals": [
+      "vim",
+      "nilify",
+      "all_tasks",
+      "resolve",
+      "resolve_or_error",
+      "started_by_us",
+      "guard"
+    ]
+  }
+}

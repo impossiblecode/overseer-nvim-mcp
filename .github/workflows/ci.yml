@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned (bumps get their own PR)
+  OVERSEER_REF: v2.1.0
+  # same deal
+  LUALS_VERSION: "3.18.2"
+
+jobs:
+  static:
+    name: lint + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: pnpm run typecheck
+
+      - name: Install neovim (luals needs its runtime defs)
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install lua-language-server
+        run: |
+          mkdir -p "$HOME/.local/luals"
+          curl -sSL --retry 5 --retry-all-errors "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" \
+            | tar -xz -C "$HOME/.local/luals"
+          echo "$HOME/.local/luals/bin" >> "$GITHUB_PATH"
+
+      - run: pnpm run gen:lua:verify
+      - run: pnpm run check:lua
+
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install just for the provider fixtures
+        # just.systems 403s macOS runner IPs; this pulls from GitHub releases.
+        uses: extractions/setup-just@v4
+
+      - name: Install task for the provider fixtures
+        run: |
+          # missing binary = test failure in CI, not a skip (ensureBinary).
+          # node, npm and make are preinstalled; vscode needs none.
+          mkdir -p "$HOME/.local/bin"
+          sh -c "$(curl -sSL --retry 5 --retry-all-errors https://taskfile.dev/install.sh)" -- -d -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check out overseer.nvim
+        uses: actions/checkout@v4
+        with:
+          repository: stevearc/overseer.nvim
+          ref: ${{ env.OVERSEER_REF }}
+          path: .overseer-nvim
+
+      - name: Start headless nvim with overseer
+        run: |
+          SOCK="${RUNNER_TEMP}/nvim-ci.sock"
+          echo "NVIM_SOCK=${SOCK}" >> "$GITHUB_ENV"
+          rm -f "$SOCK"
+          OVERSEER_PATH="${GITHUB_WORKSPACE}/.overseer-nvim" \
+            nvim --headless -u ci/minimal_init.lua --listen "$SOCK" \
+            > "${RUNNER_TEMP}/nvim.log" 2>&1 &
+          # usually up in ~400ms; poll instead of guessing a sleep
+          for _ in $(seq 1 100); do
+            [ -S "$SOCK" ] && break
+            sleep 0.2
+          done
+          if [ ! -S "$SOCK" ]; then
+            echo "::error::headless nvim never created its socket"
+            cat "${RUNNER_TEMP}/nvim.log"
+            exit 1
+          fi
+
+      - name: Verify overseer is actually loaded
+        run: |
+          # no overseer = every test skips = job still green
+          nvim --server "$NVIM_SOCK" --remote-expr \
+            "luaeval('(function() local ok = pcall(require, \"overseer\") return ok and \"ok\" or \"fail\" end)()')" \
+            | grep -qx ok
+
+      - name: Test against live overseer
+        env:
+          NVIM: ${{ env.NVIM_SOCK }}
+        run: pnpm run test
+
+      - name: nvim log on failure
+        if: failure()
+        run: cat "${RUNNER_TEMP}/nvim.log" || true
+
+  build:
+    name: build + smoke (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [22, 24]
+    defaults:
+      run:
+        # git-bash on the Windows runner, so one script works on all three.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      - name: Bundle must not import anything but node builtins
+        run: |
+          # a mis-scoped alwaysBundle regex re-externalises the SDK without failing the build
+          if grep -oE 'from ?"[^"]+"' dist/overseer-nvim-mcp.mjs | grep -v '"node:' ; then
+            echo "::error::bundle has non-builtin imports; deps.alwaysBundle is mis-scoped"
+            exit 1
+          fi
+
+      - name: Install the packed tarball as a consumer would
+        run: |
+          pnpm pack --pack-destination "${RUNNER_TEMP}"
+          cd "${RUNNER_TEMP}"
+          npm init -y > /dev/null
+          npm install ./overseer-nvim-mcp-*.tgz
+          # npm writes .cmd/.ps1 shims on Windows; check the actual bin target
+          node -e "require('fs').accessSync('node_modules/overseer-nvim-mcp/dist/overseer-nvim-mcp.mjs')"
+
+      - name: Server starts on plain node with $NVIM unset
+        run: node -e "
+          import('./dist/overseer-nvim-mcp.mjs').then(
+            () => { console.log('started and exited cleanly'); },
+            (e) => { console.error(e); process.exit(1); }
+          );" < /dev/null

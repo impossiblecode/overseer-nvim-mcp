@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # Pinned (bumps get their own PR), same as ci.yml
+  OVERSEER_REF: v2.1.0
+  LUALS_VERSION: "3.18.2"
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.release.outputs.release_created }}
+      tag: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          # PAT so the release PR gets CI; falls back until the secret exists
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # for npm provenance
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      # trusted publishing needs npm >= 11.5.1; node 22 bundles npm 10
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      - name: Install neovim
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+
+      - name: Install lua-language-server
+        run: |
+          mkdir -p "$HOME/.local/luals"
+          curl -sSL --retry 5 --retry-all-errors "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" \
+            | tar -xz -C "$HOME/.local/luals"
+          echo "$HOME/.local/luals/bin" >> "$GITHUB_PATH"
+
+      - name: Install just for the provider fixtures
+        # just.systems 403s macOS runner IPs; this pulls from GitHub releases.
+        uses: extractions/setup-just@v4
+
+      - name: Install task for the provider fixtures
+        run: |
+          # same as ci.yml; ensureBinary fails the suite in CI when these are missing
+          mkdir -p "$HOME/.local/bin"
+          sh -c "$(curl -sSL --retry 5 --retry-all-errors https://taskfile.dev/install.sh)" -- -d -b "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Check out overseer.nvim
+        uses: actions/checkout@v4
+        with:
+          repository: stevearc/overseer.nvim
+          ref: ${{ env.OVERSEER_REF }}
+          path: .overseer-nvim
+
+      - name: Start headless nvim with overseer
+        run: |
+          SOCK="${RUNNER_TEMP}/nvim-publish.sock"
+          echo "NVIM_SOCK=${SOCK}" >> "$GITHUB_ENV"
+          rm -f "$SOCK"
+          OVERSEER_PATH="${GITHUB_WORKSPACE}/.overseer-nvim" \
+            nvim --headless -u ci/minimal_init.lua --listen "$SOCK" \
+            > "${RUNNER_TEMP}/nvim.log" 2>&1 &
+          # usually up in ~400ms; poll instead of guessing a sleep
+          for _ in $(seq 1 100); do
+            [ -S "$SOCK" ] && break
+            sleep 0.2
+          done
+          if [ ! -S "$SOCK" ]; then
+            echo "::error::headless nvim never created its socket"
+            cat "${RUNNER_TEMP}/nvim.log"
+            exit 1
+          fi
+
+      - name: Verify overseer is actually loaded
+        run: |
+          # no overseer = the integration tests skip = publish gated on less
+          nvim --server "$NVIM_SOCK" --remote-expr \
+            "luaeval('(function() local ok = pcall(require, \"overseer\") return ok and \"ok\" or \"fail\" end)()')" \
+            | grep -qx ok
+
+      - name: Publish to npm
+        # npm, not pnpm: trusted publishing (OIDC), provenance automatic
+        run: npm publish --access public
+        env:
+          # lets prepublishOnly's vitest run the integration tests
+          NVIM: ${{ env.NVIM_SOCK }}
+
+      - name: nvim log on failure
+        if: failure()
+        run: cat "${RUNNER_TEMP}/nvim.log" || true

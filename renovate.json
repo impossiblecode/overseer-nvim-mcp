@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "semanticCommitType": "deps",
+  "semanticCommitScope": null,
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Bump the pinned overseer.nvim ref everywhere it appears: the CI env pin and the two docs that quote it.",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/ci\\.yml$/",
+        "/^README\\.md$/",
+        "/^CONTRIBUTING\\.md$/"
+      ],
+      "matchStrings": [
+        "OVERSEER_REF: (?<currentValue>v[\\d.]+)",
+        "--branch (?<currentValue>v[\\d.]+) https://github\\.com/stevearc/overseer\\.nvim",
+        "tested against `(?<currentValue>v[\\d.]+)`"
+      ],
+      "depNameTemplate": "stevearc/overseer.nvim",
+      "datasourceTemplate": "github-tags"
+    }
+  ]
+}

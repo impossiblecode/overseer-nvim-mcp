@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  fixture-multi-task:
+    desc: A gotask entry that coexists with npm and make
+    cmds:
+      - echo task

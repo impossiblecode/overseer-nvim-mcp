@@ -1,0 +1,10 @@
+# Build the just fixture
+fixture-just-build:
+    echo build
+
+# Generate output for a language
+fixture-just-generate lang:
+    echo {{lang}}
+
+fixture-just-undocumented:
+    echo plain

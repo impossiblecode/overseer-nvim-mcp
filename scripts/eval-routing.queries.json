@@ -1,0 +1,15 @@
+[
+  { "query": "Start the dev server", "should_route": true },
+  { "query": "Bring up the dev server and tell me when it's ready", "should_route": true },
+  { "query": "Run the tests in watch mode and leave them running", "should_route": true },
+  {
+    "query": "Keep the test suite running in the background while I work on something else",
+    "should_route": true
+  },
+  { "query": "Start whatever this project uses for local development", "should_route": true },
+  { "query": "Run the test suite once and report any failures", "should_route": false },
+  { "query": "Run the build and show me any errors", "should_route": false },
+  { "query": "List the files in this project", "should_route": false },
+  { "query": "What version of node is installed here?", "should_route": false },
+  { "query": "Show me the scripts defined in package.json", "should_route": false }
+]

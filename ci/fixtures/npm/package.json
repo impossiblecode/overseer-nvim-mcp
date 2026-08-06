@@ -1,0 +1,9 @@
+{
+  "name": "mcp-fixture-npm",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "fixture-build": "node -e 0",
+    "fixture-watch": "node -e 0"
+  }
+}

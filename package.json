@@ -1,0 +1,75 @@
+{
+  "name": "overseer-nvim-mcp",
+  "version": "0.0.0",
+  "description": "MCP server giving coding agents visibility and control over overseer.nvim tasks: list, tail, run, restart, stop, dispose",
+  "type": "module",
+  "license": "MIT",
+  "author": "Miguel Angelo Sepulveda <ma@mxconsulting.net>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/impossiblecode/overseer-nvim-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/impossiblecode/overseer-nvim-mcp/issues"
+  },
+  "homepage": "https://github.com/impossiblecode/overseer-nvim-mcp#readme",
+  "keywords": [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "neovim",
+    "nvim",
+    "overseer",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "github-copilot",
+    "task-runner"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "bin": {
+    "overseer-nvim-mcp": "dist/overseer-nvim-mcp.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx bin/overseer-nvim-mcp.ts",
+    "build": "tsdown",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "eval:routing": "tsx scripts/eval-routing.ts",
+    "gen:lua": "tsx scripts/gen-lua.ts",
+    "gen:lua:verify": "tsx scripts/gen-lua.ts --verify",
+    "check:lua": "bash scripts/check-lua.sh",
+    "precommit": "biome check . && pnpm run check:lua && pnpm run gen:lua:verify && tsc --noEmit && vitest run",
+    "prepublishOnly": "pnpm run precommit && pnpm run build",
+    "prepare": "husky"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@johnnymorganz/stylua-bin": "^2.5.2",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@msgpack/msgpack": "^3",
+    "@types/node": "^22",
+    "husky": "^9.1.7",
+    "tsdown": "^0.22.14",
+    "tsx": "^4.19.2",
+    "typescript": "^7",
+    "vitest": "^4",
+    "zod": "^4"
+  }
+}

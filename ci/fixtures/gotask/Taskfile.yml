@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  fixture-task-build:
+    desc: Build the gotask fixture
+    cmds:
+      - echo build
+  fixture-task-serve:
+    desc: A fixture task that does not exit on its own
+    cmds:
+      - sleep 30
+  fixture-task-watch:
+    desc: Watch gotask fixture files (long-running)
+    cmds:
+      - echo watch

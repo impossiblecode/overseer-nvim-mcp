@@ -1,0 +1,8 @@
+{
+  "name": "mcp-fixture-multi",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "fixture-multi-npm": "node -e 0"
+  }
+}

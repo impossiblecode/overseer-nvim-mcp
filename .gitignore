@@ -1,0 +1,12 @@
+node_modules/
+*.log
+dist/
+*.tgz
+
+# The vscode fixture is test data; don't let a global .vscode ignore eat it.
+# The dir has to be un-ignored before the file (git can't re-include a path
+# under an excluded directory).
+!ci/fixtures/vscode/.vscode/
+!ci/fixtures/vscode/.vscode/**
+
+.luals/

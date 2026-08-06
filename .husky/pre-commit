@@ -1,0 +1,5 @@
+# GUI git clients (Tower, VS Code, JetBrains) launch with a minimal launchd
+# PATH; pull in the login PATH so nvm-managed node and pnpm resolve.
+[ -f ~/.huskyrc ] && . ~/.huskyrc
+
+pnpm run precommit

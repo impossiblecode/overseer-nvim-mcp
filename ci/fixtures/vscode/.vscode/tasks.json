@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "fixture-vscode-build",
+      "type": "shell",
+      "command": "echo build",
+      "detail": "Build the vscode fixture"
+    },
+    {
+      "label": "fixture-vscode-plain",
+      "type": "shell",
+      "command": "echo plain"
+    }
+  ]
+}
