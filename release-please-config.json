@@ -10,6 +10,10 @@
       "initial-version": "0.1.0",
       "include-v-in-tag": true,
       "include-component-in-tag": false,
+      "extra-files": [
+        { "type": "json", "path": "server.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "server.json", "jsonpath": "$.packages[0].version" }
+      ],
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
