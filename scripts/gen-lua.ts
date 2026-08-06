@@ -12,10 +12,18 @@ const DIRECTIVE = /^--\s*needs:\s*(.+?)\s*$/;
 export function parseNeeds(source: string): string[] {
   const needs: string[] = [];
   for (const line of source.split("\n")) {
+    const t = line.trim();
+    if (t === "") continue;
+    // past the first statement, a needs: comment is prose, not a directive
+    if (!t.startsWith("--")) break;
     const m = DIRECTIVE.exec(line);
     if (m) needs.push(...m[1]!.split(/\s+/));
   }
   return needs;
+}
+
+function hasLuaCode(source: string): boolean {
+  return source.split("\n").some((l) => l.trim() !== "" && !l.trim().startsWith("--"));
 }
 
 export function keyFor(filename: string): string {
@@ -31,6 +39,7 @@ export function composeChunk(name: string, snippet: string, preludes: Map<string
     if (visiting.has(need)) throw new Error(`prelude cycle involving "${need}"`);
     const source = preludes.get(need);
     if (source === undefined) throw new Error(`unknown prelude "${need}" needed by ${neededBy}`);
+    if (!hasLuaCode(source)) throw new Error(`prelude "${need}" contains no Lua statements`);
     visiting.add(need);
     for (const dep of parseNeeds(source)) visit(dep, `prelude/${need}.lua`);
     visiting.delete(need);
@@ -38,8 +47,7 @@ export function composeChunk(name: string, snippet: string, preludes: Map<string
     ordered.push(source);
   };
   for (const need of parseNeeds(snippet)) visit(need, `${name}.lua`);
-  const hasCode = snippet.split("\n").some((l) => l.trim() !== "" && !l.trim().startsWith("--"));
-  if (!hasCode) throw new Error(`${name}.lua contains no Lua statements`);
+  if (!hasLuaCode(snippet)) throw new Error(`${name}.lua contains no Lua statements`);
   return [...ordered, snippet].join("\n");
 }
 
@@ -57,6 +65,7 @@ export function emitModule(chunks: Map<string, string>): string {
 }
 
 export function generate(luaDir: string = LUA_DIR): string {
+  if (!existsSync(luaDir)) throw new Error(`no lua dir at ${luaDir}`);
   const preludes = new Map<string, string>();
   const preludeDir = join(luaDir, "prelude");
   if (existsSync(preludeDir)) {

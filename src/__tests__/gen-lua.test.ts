@@ -10,6 +10,11 @@ test("parseNeeds reads directive lines, whitespace-separated", () => {
   expect(parseNeeds("local x = 1\n")).toEqual([]);
 });
 
+test("parseNeeds stops at the first statement, so prose needs: comments are inert", () => {
+  expect(parseNeeds("-- doc line\n\n-- needs: a\nlocal x = 1\n-- needs: b\n")).toEqual(["a"]);
+  expect(parseNeeds("local x = 1\n-- needs: b\nreturn x\n")).toEqual([]);
+});
+
 test("keyFor uppercases the basename, snake intact", () => {
   expect(keyFor("run_template.lua")).toBe("RUN_TEMPLATE");
   expect(keyFor("nvim_cwd.lua")).toBe("NVIM_CWD");
@@ -39,6 +44,17 @@ test("composeChunk rejects unknown preludes, cycles, and empty snippets", () => 
   ]);
   expect(() => composeChunk("t", "-- needs: a\nreturn 1\n", cyclic)).toThrow(/cycle/);
   expect(() => composeChunk("t", "-- only a comment\n", new Map())).toThrow(/no Lua statements/);
+});
+
+test("composeChunk rejects a comment-only prelude", () => {
+  const preludes = new Map([["nilify", "-- a comment where code should be\n"]]);
+  expect(() => composeChunk("t", "-- needs: nilify\nreturn 1\n", preludes)).toThrow(
+    /prelude "nilify" contains no Lua statements/,
+  );
+});
+
+test("generate names a missing lua dir instead of leaking ENOENT", () => {
+  expect(() => generate("/definitely/not/a/lua/dir")).toThrow(/no lua dir at/);
 });
 
 test("emitModule escapes hostile content and sorts keys", () => {
