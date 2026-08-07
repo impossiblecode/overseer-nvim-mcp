@@ -1,6 +1,6 @@
 {
   "name": "overseer-nvim-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "mcpName": "io.github.impossiblecode/overseer-nvim-mcp",
   "description": "MCP server giving coding agents visibility and control over overseer.nvim tasks: list, tail, run, restart, stop, dispose",
   "type": "module",
