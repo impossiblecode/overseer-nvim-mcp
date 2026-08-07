@@ -9,6 +9,7 @@ tasks that you have: list, tail, run, restart, stop, and dispose.
 [![npm](https://img.shields.io/npm/v/overseer-nvim-mcp)](https://www.npmjs.com/package/overseer-nvim-mcp)
 [![CI](https://github.com/impossiblecode/overseer-nvim-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/impossiblecode/overseer-nvim-mcp/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Glama score](https://glama.ai/mcp/servers/impossiblecode/overseer-nvim-mcp/badges/score.svg)](https://glama.ai/mcp/servers/impossiblecode/overseer-nvim-mcp)
 
 ## Why
 
