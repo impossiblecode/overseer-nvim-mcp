@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.0...v0.2.1) (2026-08-07)
+
+
+### Bug Fixes
+
+* trim tail's default to 10 lines and describe schema params ([1a1d0d5](https://github.com/impossiblecode/overseer-nvim-mcp/commit/1a1d0d5deee18a82a0e6b40d4dc57bec23a67972))
+
 ## [0.2.0](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.1.1...v0.2.0) (2026-08-07)
 
 
