@@ -71,7 +71,13 @@ export function registerTools(server: McpServer): void {
         "already running, which is your signal not to start a second one. " +
         "Pass `filter` to match a substring against name and desc; worth doing in a large " +
         "monorepo, where this can return well over eighty entries.",
-      inputSchema: { cwd: z.string().optional(), filter: z.string().optional() },
+      inputSchema: {
+        cwd: z
+          .string()
+          .optional()
+          .describe("Directory to search; defaults to nvim's current working directory"),
+        filter: z.string().optional(),
+      },
       annotations: { readOnlyHint: true },
     },
     (args) => guard(async () => json(await overseer.listTemplates(args.cwd, args.filter))),
@@ -96,7 +102,15 @@ export function registerTools(server: McpServer): void {
         "as `waited`, so a timeout is never mistaken for success.",
       inputSchema: {
         task: selector.optional(),
-        lines: z.number().int().positive().optional(),
+        lines: z
+          .number()
+          .int()
+          .positive()
+          .optional()
+          .describe(
+            "Trailing lines to return; default 10. Pass more when diagnosing a failure, " +
+              "e.g. 100 for a stack trace with its footer",
+          ),
         since: z.number().int().nonnegative().optional(),
         wait_for: z.string().optional(),
         timeout_ms: z.number().int().positive().optional(),
@@ -142,8 +156,20 @@ export function registerTools(server: McpServer): void {
       inputSchema: {
         cmd: z.array(z.string()).optional(),
         template: z.string().optional(),
-        name: z.string().optional(),
-        cwd: z.string().optional(),
+        name: z
+          .string()
+          .optional()
+          .describe(
+            "Task-list name for a `cmd` task; defaults to the command. " +
+              "A `template` runs under its own name",
+          ),
+        cwd: z
+          .string()
+          .optional()
+          .describe(
+            "Working directory for the task; for `template`, also the directory the template " +
+              "is resolved in. Defaults to nvim's cwd",
+          ),
         params: z.record(z.string(), z.unknown()).optional(),
         settle_ms: z.number().int().nonnegative().optional(),
       },

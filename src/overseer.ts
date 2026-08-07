@@ -150,7 +150,7 @@ export async function tail(
   selector: number | string | null,
   opts: TailOpts = {},
 ): Promise<TailResult> {
-  const read = () => exec<TailResult>(LUA.TAIL, [selector, opts.lines ?? 100, opts.since ?? 0]);
+  const read = () => exec<TailResult>(LUA.TAIL, [selector, opts.lines ?? 10, opts.since ?? 0]);
   if (opts.waitFor === undefined) return read();
 
   let pattern: RegExp;
