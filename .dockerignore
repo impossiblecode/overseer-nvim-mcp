@@ -1,0 +1,11 @@
+# Allowlist: everything out, then what the two build stages read.
+*
+!package.json
+!pnpm-lock.yaml
+!tsdown.config.ts
+!tsconfig.json
+!bin/**
+!src/**
+src/__tests__/**
+!ci/minimal_init.lua
+!ci/glama/**
