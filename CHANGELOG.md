@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.2](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.1...v0.2.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* **bin:** exit when the client disconnects ([7b71847](https://github.com/impossiblecode/overseer-nvim-mcp/commit/7b71847d33e0084f267daf17712f4d520cd2f449))
+* **rpc:** reject calls immediately once nvim is gone ([e68a54a](https://github.com/impossiblecode/overseer-nvim-mcp/commit/e68a54aaf008326cb0483bbbf2ea784c592ebcc5))
+* **rpc:** report socket errors as nvim no longer running ([100c587](https://github.com/impossiblecode/overseer-nvim-mcp/commit/100c587330600e34103e0b8ff2a0e89161893ef5))
+* **tail:** stop a backtracking wait_for pattern from hanging the server ([5e35c9a](https://github.com/impossiblecode/overseer-nvim-mcp/commit/5e35c9a8a7f4ec5feb6b258a96e4e77fea42216e))
+
 ## [0.2.1](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.0...v0.2.1) (2026-08-07)
 
 
