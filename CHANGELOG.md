@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.2...v0.2.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* **deps:** bump bundled fast-uri to 3.1.5 (GHSA-7p8r-x3mc-p8w7) ([9c75250](https://github.com/impossiblecode/overseer-nvim-mcp/commit/9c75250ef76550d54394a7daf0bbd172f1fb244e))
+
 ## [0.2.2](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.1...v0.2.2) (2026-08-11)
 
 
