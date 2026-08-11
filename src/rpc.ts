@@ -39,9 +39,11 @@ export class NvimRpc {
       this.queue.push(new Uint8Array(chunk));
       this.notify?.();
     });
+    // Linux reports a peer that died with unread data as ECONNRESET; macOS
+    // just closes. Same meaning, so same message.
     socket.on("error", (e: Error) => {
       this.dead = true;
-      this.failAll(e);
+      this.failAll(new Error(`nvim is no longer running (${e.message})`));
     });
     socket.on("close", () => {
       this.dead = true;
