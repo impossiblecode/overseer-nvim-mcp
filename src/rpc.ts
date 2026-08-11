@@ -18,6 +18,7 @@ export class NvimRpc {
   private queue: Uint8Array[] = [];
   private notify: (() => void) | null = null;
   private closed = false;
+  private dead = false;
 
   async connect(sock: string): Promise<void> {
     const socket = await new Promise<Socket>((resolve, reject) => {
@@ -38,8 +39,12 @@ export class NvimRpc {
       this.queue.push(new Uint8Array(chunk));
       this.notify?.();
     });
-    socket.on("error", (e: Error) => this.failAll(e));
+    socket.on("error", (e: Error) => {
+      this.dead = true;
+      this.failAll(e);
+    });
     socket.on("close", () => {
+      this.dead = true;
       if (!this.closed) this.failAll(new Error("nvim is no longer running"));
     });
 
@@ -74,6 +79,8 @@ export class NvimRpc {
 
   execLua<T = unknown>(code: string, args: unknown[] = [], timeoutMs = 15000): Promise<T> {
     if (!this.conn) return Promise.reject(new Error("not connected"));
+    // A write on the dead socket would just sit there until timeoutMs.
+    if (this.dead) return Promise.reject(new Error("nvim is no longer running"));
     const id = this.nextId++;
     const req = encode([0, id, "nvim_exec_lua", [code, args]]);
     return new Promise<T>((resolve, reject) => {

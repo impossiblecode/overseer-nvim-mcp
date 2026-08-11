@@ -79,6 +79,32 @@ test("passes hostile args as data rather than code", async () => {
   await stop(server);
 });
 
+test("fails a pending call when nvim dies mid-request", async () => {
+  const sock = sockPath("d");
+  // Accepts the connection, never replies.
+  const server = await listen(sock, () => {});
+  const rpc = new NvimRpc();
+  await rpc.connect(sock);
+  const pending = rpc.execLua("return 1", [], 30000);
+  await stop(server);
+  await expect(pending).rejects.toThrow(/nvim is no longer running/);
+  rpc.close();
+});
+
+test("rejects a call made after nvim has already died, rather than hanging", async () => {
+  const sock = sockPath("e");
+  const server = await listen(sock, () => {});
+  const rpc = new NvimRpc();
+  await rpc.connect(sock);
+  await stop(server);
+  // Let the close event reach the client before the next call.
+  await new Promise((r) => setTimeout(r, 50));
+  const startedAt = Date.now();
+  await expect(rpc.execLua("return 1", [], 30000)).rejects.toThrow();
+  expect(Date.now() - startedAt).toBeLessThan(2000);
+  rpc.close();
+});
+
 test("rejects with a timeout message when nvim never responds", async () => {
   const sock = sockPath("t");
   // Server that accepts the connection but never replies.
