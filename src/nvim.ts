@@ -17,6 +17,11 @@ export function insideNvim(): boolean {
 
 let rpc: NvimRpc | null = null;
 
+export function closeRpc(): void {
+  rpc?.close();
+  rpc = null;
+}
+
 export async function getRpc(): Promise<NvimRpc> {
   const sock = nvimSocket();
   if (!sock) throw new NvimUnavailableError();
