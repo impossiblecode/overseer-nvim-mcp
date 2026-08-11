@@ -1,3 +1,4 @@
+import vm from "node:vm";
 import { LUA } from "./lua.gen.js";
 import { getRpc } from "./nvim.js";
 
@@ -66,6 +67,7 @@ export type RunResult = {
 const WAIT_POLL_MS = 250;
 const WAIT_DEFAULT_MS = 15_000;
 const WAIT_MAX_MS = 120_000;
+const MATCH_BUDGET_MS = 100;
 const SETTLE_DEFAULT_MS = 1_500;
 const SETTLE_POLL_MS = 100;
 
@@ -165,11 +167,33 @@ export async function tail(
     // Re-read from the same `since` each round so the result holds everything
     // that arrived during the wait.
     const res = await read();
-    if (res.lines.some((line) => pattern.test(line))) return { ...res, waited: "matched" };
+    if (matchesAny(pattern, res.lines)) return { ...res, waited: "matched" };
     // Once the task has exited nothing new can match, so stop early.
     if (res.exit_code !== undefined) return { ...res, waited: "exited" };
     if (Date.now() >= deadline) return { ...res, waited: "timeout" };
     await sleep(WAIT_POLL_MS);
+  }
+}
+
+/**
+ * Matches under vm's timeout, which can interrupt a running regex. A plain
+ * .test() with a catastrophically backtracking pattern blocks the event loop,
+ * and the wait deadline is checked on that same loop, so it would never fire.
+ */
+function matchesAny(pattern: RegExp, lines: string[]): boolean {
+  try {
+    return vm.runInContext(
+      "lines.some((line) => pattern.test(line))",
+      vm.createContext({ pattern, lines }),
+      { timeout: MATCH_BUDGET_MS },
+    );
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ERR_SCRIPT_EXECUTION_TIMEOUT") {
+      throw new OverseerError(
+        `wait_for pattern took over ${MATCH_BUDGET_MS}ms to evaluate, likely catastrophic backtracking; use a simpler pattern`,
+      );
+    }
+    throw e;
   }
 }
 

@@ -122,6 +122,22 @@ it("tail wait_for stops early when the task exits without matching", async () =>
   expect(Date.now() - startedAt).toBeLessThan(10000);
 });
 
+it("tail wait_for rejects a catastrophically backtracking pattern instead of hanging", async () => {
+  const { id } = await run({
+    // A near-miss line: 30 a's and no b forces (a+)+b through every split,
+    // blocking an unbounded .test() far past the 3s asserted below.
+    cmd: nodeCmd(`console.log("a".repeat(30) + "c"); ${stayAlive}`),
+    name: "mcp redos probe",
+    settleMs: 0,
+  });
+  track(id);
+  await sleep(700);
+
+  const startedAt = Date.now();
+  await expect(tail(id, { waitFor: "(a+)+b", timeoutMs: 5000 })).rejects.toThrow(/wait_for/);
+  expect(Date.now() - startedAt).toBeLessThan(3000);
+}, 30000);
+
 it("run reports an immediate failure instead of returning a bare id", async () => {
   const res = await run({
     cmd: nodeCmd(`console.error("boom"); process.exit(9)`),
