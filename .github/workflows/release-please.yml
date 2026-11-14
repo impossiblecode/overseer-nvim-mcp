@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,7 @@ jobs:
         with:
           # PAT so the release PR gets CI; falls back until the secret exists
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          target-branch: ${{ github.ref_name }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -118,7 +119,7 @@ jobs:
 
       - name: Publish to npm
         # npm, not pnpm: trusted publishing (OIDC), provenance automatic
-        run: npm publish --access public
+        run: npm publish --access public ${{ contains(needs.release-please.outputs.tag, '-') && '--tag beta' || '' }}
         env:
           # lets prepublishOnly's vitest run the integration tests
           NVIM: ${{ env.NVIM_SOCK }}
@@ -129,7 +130,7 @@ jobs:
 
   mcp-registry:
     needs: [release-please, npm]
-    if: needs.release-please.outputs.released == 'true'
+    if: needs.release-please.outputs.released == 'true' && !contains(needs.release-please.outputs.tag, '-')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
