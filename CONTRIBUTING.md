@@ -26,6 +26,7 @@ pnpm test:watch       # vitest
 pnpm gen:lua          # regenerate src/lua.gen.ts from src/lua/*.lua
 pnpm gen:lua:verify   # check src/lua.gen.ts isn't stale (verify only)
 pnpm check:lua        # stylua + lua-language-server over src/lua/ (verify only)
+pnpm deps:check       # outdated packages, pnpm audit, overseer.nvim pin vs latest tag
 pnpm precommit        # the full gate: check + check:lua + gen:lua:verify + typecheck + test
 ```
 
