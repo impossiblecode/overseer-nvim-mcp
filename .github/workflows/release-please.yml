@@ -29,7 +29,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  publish:
+  npm:
     needs: release-please
     if: needs.release-please.outputs.released == 'true'
     runs-on: ubuntu-latest
@@ -123,17 +123,48 @@ jobs:
           # lets prepublishOnly's vitest run the integration tests
           NVIM: ${{ env.NVIM_SOCK }}
 
+      - name: nvim log on failure
+        if: failure()
+        run: cat "${RUNNER_TEMP}/nvim.log" || true
+
+  mcp-registry:
+    needs: [release-please, npm]
+    if: needs.release-please.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # for mcp-publisher login github-oidc
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag }}
+
+      - name: Install mcp-publisher
+        run: |
+          curl -sSL --retry 5 --retry-all-errors \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+
+      - name: Wait for npm to serve the new version
+        # the registry checks npm, and npm can 404 a fresh version for minutes
+        run: |
+          url="https://registry.npmjs.org/$(jq -r .name package.json)/$(jq -r .version package.json)"
+          for _ in $(seq 1 30); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' "$url")" = 200 ] && exit 0
+            sleep 30
+          done
+          echo "::error::$url still 404 after 15 minutes; re-run this job later"
+          exit 1
+
       - name: Publish to the MCP registry
         run: |
           ./mcp-publisher login github-oidc
-          # npm propagation: the registry can 404 on a version published seconds ago
+          # the registry's own npm lookup can still trail ours by a little
           for i in 1 2 3 4 5; do
             ./mcp-publisher publish && exit 0
             echo "attempt $i failed; retrying in 30s"
             sleep 30
           done
           exit 1
-
-      - name: nvim log on failure
-        if: failure()
-        run: cat "${RUNNER_TEMP}/nvim.log" || true
