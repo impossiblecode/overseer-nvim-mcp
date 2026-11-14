@@ -14,7 +14,9 @@
       "resolve",
       "resolve_or_error",
       "started_by_us",
-      "guard"
+      "guard",
+      "dispose_component",
+      "unstartable"
     ]
   }
 }

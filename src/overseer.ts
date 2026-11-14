@@ -68,8 +68,11 @@ const WAIT_POLL_MS = 250;
 const WAIT_DEFAULT_MS = 15_000;
 const WAIT_MAX_MS = 120_000;
 const MATCH_BUDGET_MS = 100;
+const WAIT_CLI_DEFAULT_MS = 60 * 60_000;
 const SETTLE_DEFAULT_MS = 1_500;
 const SETTLE_POLL_MS = 100;
+/** overseer's own on_complete_dispose default */
+const DISPOSE_TIMEOUT_DEFAULT_S = 300;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -175,6 +178,40 @@ export async function tail(
   }
 }
 
+export type WaitOpts = {
+  /** Regex; returns on the first matching output line. */
+  match?: string;
+  lines?: number;
+  timeoutMs?: number;
+};
+
+/**
+ * Block until a task exits or `match` appears in its output. Same loop as
+ * `tail` without the 120 s cap, for the `wait` CLI.
+ */
+export async function waitForTask(
+  selector: number | string | null,
+  opts: WaitOpts = {},
+): Promise<TailResult> {
+  let pattern: RegExp | null = null;
+  if (opts.match !== undefined) {
+    try {
+      pattern = new RegExp(opts.match);
+    } catch (e) {
+      throw new OverseerError(`match is not a valid regular expression: ${String(e)}`);
+    }
+  }
+  const deadline = Date.now() + (opts.timeoutMs ?? WAIT_CLI_DEFAULT_MS);
+
+  for (;;) {
+    const res = await exec<TailResult>(LUA.TAIL, [selector, opts.lines ?? 20, 0]);
+    if (pattern !== null && matchesAny(pattern, res.lines)) return { ...res, waited: "matched" };
+    if (res.exit_code !== undefined) return { ...res, waited: "exited" };
+    if (Date.now() >= deadline) return { ...res, waited: "timeout" };
+    await sleep(WAIT_POLL_MS);
+  }
+}
+
 /**
  * Matches under vm's timeout, which can interrupt a running regex. A plain
  * .test() with a catastrophically backtracking pattern blocks the event loop,
@@ -204,6 +241,8 @@ export async function run(opts: {
   cwd?: string;
   params?: Record<string, unknown>;
   settleMs?: number;
+  disposeTimeout?: number;
+  disposeRequireView?: boolean;
 }): Promise<RunResult> {
   const hasCmd = Array.isArray(opts.cmd) && opts.cmd.length > 0;
   const hasTemplate = typeof opts.template === "string" && opts.template.length > 0;
@@ -213,12 +252,22 @@ export async function run(opts: {
   if (hasCmd && opts.params !== undefined) {
     throw new OverseerError("`params` applies to `template`, not to a raw `cmd`");
   }
+  const disposeTimeout = opts.disposeTimeout ?? DISPOSE_TIMEOUT_DEFAULT_S;
+  const disposeRequireView = opts.disposeRequireView ?? false;
   const started = hasCmd
-    ? await exec<RunResult>(LUA.RUN_CMD, [opts.cmd, opts.name ?? null, opts.cwd ?? null])
+    ? await exec<RunResult>(LUA.RUN_CMD, [
+        opts.cmd,
+        opts.name ?? null,
+        opts.cwd ?? null,
+        disposeTimeout,
+        disposeRequireView,
+      ])
     : await exec<RunResult>(LUA.RUN_TEMPLATE, [
         opts.template,
         opts.cwd ?? null,
         opts.params ?? null,
+        disposeTimeout,
+        disposeRequireView,
       ]);
 
   const settle = opts.settleMs ?? SETTLE_DEFAULT_MS;

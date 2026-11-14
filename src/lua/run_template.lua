@@ -1,7 +1,8 @@
--- needs: nilify
--- args: (name: string, cwd: string|nil)
+-- needs: nilify dispose_component unstartable
+-- args: (name: string, cwd: string|nil, params: table|nil, dispose_timeout: number, dispose_require_view: boolean)
 local name, cwd, params = ({ ... })[1], nilify(({ ... })[2]), nilify(({ ... })[3])
-local done, res = false, nil
+local dispose_timeout, dispose_require_view = ({ ... })[4], ({ ... })[5]
+local done, task = false, nil
 -- run_task resolves templates with opts.search_params ONLY; opts.dir and
 -- opts.cwd are applied after resolution, so without search_params a
 -- template that overseer.template.list found for cwd cannot be run from
@@ -12,7 +13,10 @@ local done, res = false, nil
 -- the vim.wait below spins out, leaving the form orphaned. With it set, a
 -- missing param comes back as an error. Written as a Lua literal because
 -- run_task validates a boolean, and msgpack null arrives as vim.NIL.
-local opts = { name = name, cwd = cwd, disallow_prompt = true }
+--
+-- autostart is off so unstartable() can run first; run_task ignores start's
+-- result.
+local opts = { name = name, cwd = cwd, disallow_prompt = true, autostart = false }
 -- Always set: without search_params run_task falls back to
 -- get_search_params(), which resolves from the current buffer's parent, so
 -- a template overseer_list_templates just listed could fail to resolve here.
@@ -24,21 +28,29 @@ if params then
 end
 -- TemplateRunOpts has no metadata field, but on_build hands us the task
 -- definition before the task is constructed, which is where it belongs.
-opts.on_build = function(task_defn)
+-- Components are already a flat list here. add_component drops a same-named
+-- entry first and keeps the rest (vscode diagnostics, cargo's components).
+opts.on_build = function(task_defn, task_util)
   task_defn.metadata = task_defn.metadata or {}
   task_defn.metadata.mcp_overseer_nvim = true
+  task_util.add_component(task_defn, dispose_component(dispose_timeout, dispose_require_view))
 end
-require('overseer').run_task(opts, function(task)
-  if task then
-    res = { id = task.id, name = task.name }
-  end
+require('overseer').run_task(opts, function(built)
+  task = built
   done = true
 end)
 vim.wait(10000, function()
   return done
 end)
-if res then
-  return res
+if task then
+  local why = unstartable(task.cmd, task.cwd)
+  if why then
+    task:dispose()
+    return { error = 'cannot start ' .. tostring(name) .. ': ' .. why }
+  end
+  -- PENDING after start can be the dependencies component, so no check here
+  task:start()
+  return { id = task.id, name = task.name }
 end
 if not done then
   return { error = 'timed out starting template ' .. tostring(name) }

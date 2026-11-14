@@ -1,4 +1,8 @@
+import { mkdtemp, realpath, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect } from "vitest";
+import { getRpc } from "../nvim.js";
 import { dispose, listTasks, OverseerError, restart, run, stop } from "../overseer.js";
 import {
   it,
@@ -122,4 +126,63 @@ it("stop reports a final status without any polling", async () => {
   const mine = await run({ cmd: nodeCmd(stayAlive), name: "mcp stop status", settleMs: 0 });
   track(mine.id);
   expect((await stop(mine.id)).status).toBe("CANCELED");
+});
+
+// Task:start logs strategy errors to overseer.log and leaves the task PENDING.
+async function runUnstartable(opts: Parameters<typeof run>[0]): Promise<unknown> {
+  try {
+    const started = await run({ ...opts, settleMs: 0 });
+    track(started.id);
+    return started;
+  } catch (e) {
+    return e;
+  }
+}
+
+const leftover = async (name: string) => (await listTasks()).filter((t) => t.name === name);
+
+it("run(cmd) reports a binary missing from nvim's PATH instead of leaving it PENDING", async () => {
+  const err = await runUnstartable({ cmd: ["mcp-no-such-binary"], name: "mcp unstartable" });
+  expect(err).toBeInstanceOf(OverseerError);
+  expect(String(err)).toMatch(/mcp-no-such-binary.*nvim's PATH/);
+  expect(await leftover("mcp unstartable")).toEqual([]);
+});
+
+it("run(cmd) reports a cwd that is not a directory", async () => {
+  const cwd = join(tmpdir(), "mcp-no-such-dir");
+  const err = await runUnstartable({ cmd: nodeCmd("0"), cwd, name: "mcp bad cwd" });
+  expect(err).toBeInstanceOf(OverseerError);
+  expect(String(err)).toMatch(/mcp-no-such-dir.*not a directory/);
+  expect(await leftover("mcp bad cwd")).toEqual([]);
+});
+
+// Any other strategy failure; a throwing jobstart stands in for one.
+it("run(cmd) reports a task overseer failed to start, and removes it", async () => {
+  const rpc = await getRpc();
+  await rpc.execLua(`
+    local b = require('overseer').builtin
+    _G.__mcp_jobstart = b.jobstart
+    b.jobstart = function() error('simulated strategy failure') end
+  `);
+  try {
+    const err = await runUnstartable({ cmd: nodeCmd("0"), name: "mcp strategy failure" });
+    expect(err).toBeInstanceOf(OverseerError);
+    expect(String(err)).toMatch(/did not start.*overseer\.log/);
+    expect(await leftover("mcp strategy failure")).toEqual([]);
+  } finally {
+    await rpc.execLua(`
+      require('overseer').builtin.jobstart = _G.__mcp_jobstart
+      _G.__mcp_jobstart = nil
+    `);
+  }
+});
+
+it("run(cmd) resolves a relative argv[0] against cwd, as a shell there would", async () => {
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "mcp-relative-")));
+  await writeFile(join(dir, "probe.js"), '#!/usr/bin/env node\nconsole.log("relative ok")\n', {
+    mode: 0o755,
+  });
+  const { id } = await run({ cmd: ["./probe.js"], cwd: dir, name: "mcp relative argv0" });
+  track(id);
+  expect((await waitForExit(id)).exit_code).toBe(0);
 });

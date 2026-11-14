@@ -4,6 +4,10 @@
  * and INSTRUCTIONS against real clients, since only a real client has the
  * shell tool overseer_run competes with.
  *
+ * A second, optional score: after starting a task, did the agent background
+ * the `wait` CLI or block in a tool call? Queries opt in with should_wait,
+ * agents with a detectWait adapter; agents without one print "not measured".
+ *
  * Manual only: every run costs real agent tokens. Keep it out of precommit
  * and CI.
  *
@@ -16,6 +20,9 @@
  *
  * Usage: pnpm eval:routing [--agent claude] [--model NAME] [--runs 3]
  *                          [--jobs 4] [--only substring] [--json FILE]
+ *                          [--dump DIR]
+ *
+ * --dump writes each run's raw transcript to DIR.
  *
  * The copilot adapter reaches non-Claude models through one binary:
  *   pnpm eval:routing --agent copilot --model gemini-3.1-pro-preview
@@ -47,6 +54,8 @@ const ROUTE_TOOL = "overseer_run";
 interface EvalQuery {
   query: string;
   should_route: boolean;
+  /** Should the agent background the wait CLI after starting the task? */
+  should_wait?: boolean;
 }
 
 interface Agent {
@@ -55,6 +64,8 @@ interface Agent {
   args: (query: string, mcpConfigJson: string, model: string | undefined, ws: string) => string[];
   /** True when the run called overseer_run. */
   detect: (stdout: string) => boolean;
+  /** True when the run backgrounded the wait CLI. Missing = not measured. */
+  detectWait?: (stdout: string) => boolean;
   /** Mutates state outside the workspaces before any run; returns the undo. */
   setup?: () => () => void;
 }
@@ -66,6 +77,8 @@ interface Args {
   jobs: number;
   only?: string;
   json?: string;
+  /** Directory to write each run's raw transcript to. */
+  dump?: string;
 }
 
 interface Task {
@@ -76,8 +89,11 @@ interface Task {
 
 interface Outcome {
   routed: boolean;
+  waited: boolean;
   errored: boolean;
 }
+
+type Verdict = "PASS" | "FAIL" | "ERR";
 
 interface Row {
   query: string;
@@ -86,7 +102,12 @@ interface Row {
   runs: number;
   errors: number;
   route_rate: number;
-  verdict: "PASS" | "FAIL" | "ERR";
+  verdict: Verdict;
+  /** Absent unless the query declares should_wait. */
+  should_wait?: boolean;
+  waited?: number;
+  wait_rate?: number;
+  wait_verdict?: Verdict;
 }
 
 /**
@@ -104,6 +125,9 @@ const WORKSPACE_FILES: Record<string, string> = {
         "test:watch": "node server.js",
         test: "node test.js",
         build: "node -e \"console.log('built')\"",
+        // slow but finite: route, then wait in the background
+        "test:integration": "node slow.js integration",
+        migrate: "node slow.js migrate",
       },
     },
     null,
@@ -117,6 +141,17 @@ const WORKSPACE_FILES: Record<string, string> = {
     "",
   ].join("\n"),
   "test.js": 'console.log("2 passed, 0 failed");\n',
+  // concatenation because biome flags ${...} inside a plain string
+  "slow.js": [
+    "const what = process.argv[2];",
+    'console.log(what + ": starting, this takes a while");',
+    "let n = 0;",
+    "const t = setInterval(() => {",
+    '  console.log(what + ": step " + ++n + "/40");',
+    '  if (n === 40) { clearInterval(t); console.log(what + ": complete"); }',
+    "}, 1000);",
+    "",
+  ].join("\n"),
 };
 
 function parseArgs(argv: string[]): Args {
@@ -143,6 +178,9 @@ function parseArgs(argv: string[]): Args {
       case "--json":
         out.json = value;
         break;
+      case "--dump":
+        out.dump = value;
+        break;
       default:
         throw new Error(`unknown arg: ${argv[i]}`);
     }
@@ -159,7 +197,9 @@ function parseQueries(raw: unknown): EvalQuery[] {
       throw new Error(`${QUERIES}[${i}]: 'query' must be a non-empty string`);
     if (typeof item.should_route !== "boolean")
       throw new Error(`${QUERIES}[${i}]: 'should_route' must be a boolean`);
-    return { query: item.query, should_route: item.should_route };
+    if (item.should_wait !== undefined && typeof item.should_wait !== "boolean")
+      throw new Error(`${QUERIES}[${i}]: 'should_wait' must be a boolean when present`);
+    return { query: item.query, should_route: item.should_route, should_wait: item.should_wait };
   });
 }
 
@@ -172,6 +212,29 @@ function claudeCalledRouteTool(stdout: string): boolean {
     if (record.type === "tool_use" && record.name === `mcp__overseer__${ROUTE_TOOL}`) {
       found = true;
       return;
+    }
+    for (const value of Object.values(record)) walk(value);
+  };
+  walk(JSON.parse(stdout));
+  return found;
+}
+
+/**
+ * A foreground wait blocks the conversation like wait_for does, so only
+ * run_in_background counts.
+ */
+function claudeBackgroundedWait(stdout: string): boolean {
+  let found = false;
+  const walk = (node: unknown): void => {
+    if (found || node === null || typeof node !== "object") return;
+    const record = node as Record<string, unknown>;
+    if (record.type === "tool_use" && record.name === "Bash") {
+      const input = record.input as { command?: unknown; run_in_background?: unknown } | undefined;
+      const command = typeof input?.command === "string" ? input.command : "";
+      if (/overseer-nvim-mcp\S*\s+wait\b/.test(command) && input?.run_in_background === true) {
+        found = true;
+        return;
+      }
     }
     for (const value of Object.values(record)) walk(value);
   };
@@ -204,6 +267,7 @@ const AGENTS: Record<string, Agent> = {
       ...(model ? ["--model", model] : []),
     ],
     detect: claudeCalledRouteTool,
+    detectWait: claudeBackgroundedWait,
   },
   // Fronts Claude, GPT, Gemini and Kimi models; `copilot help config` lists
   // the ids for --model.
@@ -459,18 +523,12 @@ async function pool<T>(items: T[], limit: number, worker: (item: T) => Promise<v
   await Promise.all(runners);
 }
 
-function verdictFor(
-  query: EvalQuery,
-  routed: number,
-  errors: number,
-  runs: number,
-): Row["verdict"] {
+function verdictFor(want: boolean, hits: number, errors: number, runs: number): Verdict {
   // errored runs get their own verdict, or a runner that never executes
   // would report every should-not-route query as PASS at 0%
   if (errors > 0) return "ERR";
-  const rate = routed / runs;
-  if (query.should_route) return rate > 0.5 ? "PASS" : "FAIL";
-  return rate < 0.5 ? "PASS" : "FAIL";
+  const rate = hits / runs;
+  return want ? (rate > 0.5 ? "PASS" : "FAIL") : rate < 0.5 ? "PASS" : "FAIL";
 }
 
 async function main(): Promise<number> {
@@ -509,12 +567,26 @@ async function main(): Promise<number> {
   try {
     await pool(tasks, args.jobs, async (task) => {
       const stdout = await invoke(agent, task.query.query, args.model);
-      let outcome: Outcome = { routed: false, errored: true };
+      if (args.dump !== undefined && stdout !== null) {
+        mkdirSync(args.dump, { recursive: true });
+        // by query text: --only renumbers from zero, so indexes would collide
+        const slug = task.query.query
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .slice(0, 40)
+          .replace(/-$/, "");
+        writeFileSync(join(args.dump, `${slug}-run${task.run}.json`), stdout);
+      }
+      let outcome: Outcome = { routed: false, waited: false, errored: true };
       if (stdout !== null) {
         try {
-          outcome = { routed: agent.detect(stdout), errored: false };
+          outcome = {
+            routed: agent.detect(stdout),
+            waited: agent.detectWait?.(stdout) ?? false,
+            errored: false,
+          };
         } catch {
-          outcome = { routed: false, errored: true };
+          outcome = { routed: false, waited: false, errored: true };
         }
       }
       results.set(`${task.qi}.${task.run}`, outcome);
@@ -526,23 +598,36 @@ async function main(): Promise<number> {
   }
   process.stderr.write("\n");
 
+  const waitScored = agent.detectWait !== undefined;
+
   const report: Row[] = queries.map((query, qi) => {
     let routed = 0;
+    let waited = 0;
     let errors = 0;
     for (let run = 0; run < args.runs; run++) {
       const outcome = results.get(`${qi}.${run}`);
       if (!outcome || outcome.errored) errors++;
-      else if (outcome.routed) routed++;
+      else {
+        if (outcome.routed) routed++;
+        if (outcome.waited) waited++;
+      }
     }
-    return {
+    const row: Row = {
       query: query.query,
       should_route: query.should_route,
       routed,
       runs: args.runs,
       errors,
       route_rate: routed / args.runs,
-      verdict: verdictFor(query, routed, errors, args.runs),
+      verdict: verdictFor(query.should_route, routed, errors, args.runs),
     };
+    if (query.should_wait !== undefined && waitScored) {
+      row.should_wait = query.should_wait;
+      row.waited = waited;
+      row.wait_rate = waited / args.runs;
+      row.wait_verdict = verdictFor(query.should_wait, waited, errors, args.runs);
+    }
+    return row;
   });
 
   console.log(`\n── routing (${args.runs} runs/query)`);
@@ -555,13 +640,28 @@ async function main(): Promise<number> {
     );
   }
 
+  const waitRows = report.filter((row) => row.wait_verdict !== undefined);
+  if (waitRows.length > 0) {
+    console.log(`\n── waiting outside the conversation (${args.runs} runs/query)`);
+    for (const row of waitRows) {
+      const mark = row.wait_verdict === "PASS" ? "✓" : "✗";
+      const pct = `${Math.round((row.wait_rate ?? 0) * 100)}%`.padStart(4);
+      const want = String(row.should_wait).padEnd(5);
+      console.log(
+        `  ${mark} ${(row.wait_verdict as string).padEnd(4)} want=${want} rate=${pct}  ${row.query.slice(0, 62)}`,
+      );
+    }
+  } else if (queries.some((q) => q.should_wait !== undefined)) {
+    console.log(`\n── waiting: not measured for ${args.agent} (no detectWait adapter)`);
+  }
+
   if (args.json) {
     writeFileSync(args.json, `${JSON.stringify(report, null, 2)}\n`);
     console.log(`\nresults written to ${args.json}`);
   }
 
   console.log("");
-  if (report.some((row) => row.verdict !== "PASS")) {
+  if (report.some((row) => row.verdict !== "PASS" || (row.wait_verdict ?? "PASS") !== "PASS")) {
     console.error("✗ routing evals: at least one query missed its threshold");
     return 1;
   }

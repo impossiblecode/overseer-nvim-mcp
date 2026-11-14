@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { expect, test } from "vitest";
-import { buildServer, INSTRUCTIONS } from "../server.js";
+import { describe, expect, test } from "vitest";
+import { buildServer, INSTRUCTIONS, nodeCommand } from "../server.js";
 
 // What the client actually receives. The private field is the only
 // observable short of a full transport handshake.
@@ -36,6 +36,37 @@ test("instructions state when to use the server, not how each tool works", () =>
   expect(INSTRUCTIONS).toMatch(/shell/i);
   expect(INSTRUCTIONS).toMatch(/wait_for/);
   expect(INSTRUCTIONS).toMatch(/origin/);
+});
+
+// The only place the model can learn the wait CLI exists.
+test("instructions point at the wait subcommand, and say to background it", () => {
+  expect(INSTRUCTIONS).toMatch(/wait <task>/);
+  expect(INSTRUCTIONS).toMatch(/background/i);
+  expect(INSTRUCTIONS).toMatch(/--match/);
+});
+
+// INSTRUCTIONS is built once at startup, so the node it names has to survive a
+// node upgrade while the server runs.
+describe("nodeCommand", () => {
+  const resolved = "/opt/node/versions/vN/bin/node";
+  const onDisk = (paths: string[]) => (p: string) => paths.includes(p);
+
+  test("returns the PATH entry, not the path it resolves to", () => {
+    const isExec = onDisk(["/usr/local/bin/node"]);
+    expect(nodeCommand("node", resolved, "/nope:/usr/local/bin:/usr/bin", isExec)).toBe(
+      "/usr/local/bin/node",
+    );
+  });
+
+  test("keeps an absolute argv0 as given", () => {
+    expect(nodeCommand("/usr/local/bin/node", resolved, "", () => false)).toBe(
+      "/usr/local/bin/node",
+    );
+  });
+
+  test("falls back to execPath when PATH has no match", () => {
+    expect(nodeCommand("node", resolved, "/usr/bin", () => false)).toBe(resolved);
+  });
 });
 
 // Prompts are a user surface: clients render them as slash commands and never

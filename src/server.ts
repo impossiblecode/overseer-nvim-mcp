@@ -1,9 +1,51 @@
+import { accessSync, constants } from "node:fs";
+import { delimiter, isAbsolute, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import pkg from "../package.json" with { type: "json" };
 import { insideNvim } from "./nvim.js";
 import { registerPrompts } from "./prompts.js";
 import { registerResources } from "./resources.js";
 import { registerTools } from "./tools.js";
+
+/**
+ * The node binary as it was launched. execPath has its symlinks resolved, so it
+ * can point into a versioned install dir that an upgrade removes while the
+ * server is still running. A bare argv0 gets the same PATH lookup the spawn did.
+ */
+export function nodeCommand(
+  argv0: string,
+  execPath: string,
+  path: string,
+  isExecutable: (p: string) => boolean,
+): string {
+  if (isAbsolute(argv0)) return argv0;
+  if (!argv0.includes("/")) {
+    for (const dir of path.split(delimiter)) {
+      if (dir === "") continue;
+      const candidate = join(dir, argv0);
+      if (isExecutable(candidate)) return candidate;
+    }
+  }
+  return execPath;
+}
+
+function isExecutable(p: string): boolean {
+  try {
+    accessSync(p, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Command line for our own `wait` CLI. Under `npx -y overseer-nvim-mcp` the bin
+ * name isn't on PATH, but argv[1] is always the script being run.
+ */
+const WAIT_CMD =
+  process.argv[1] === undefined
+    ? "overseer-nvim-mcp"
+    : `${nodeCommand(process.argv0, process.execPath, process.env.PATH ?? "", isExecutable)} ${process.argv[1]}`;
 
 /**
  * Returned in the initialize result; clients put it in the agent's system
@@ -27,7 +69,20 @@ that matches, run it by name instead of reconstructing the command. If an entry
 already has running_task_id, the user has it running; tail that rather than
 starting a second one on top of it.
 
-Use overseer_tail's wait_for to wait for a line to appear. Do not poll in a loop.
+Do not poll in a loop. For a wait of a few seconds, use overseer_tail's
+wait_for. For anything longer, and for any task you expect to finish on its own
+(a build, a test run, a migration), do not wait inside a tool call at all: a
+tool call cannot be backgrounded, so the conversation stalls for as long as the
+task runs. Run this instead, as a BACKGROUND shell command if your shell tool
+has one:
+
+  ${WAIT_CMD} wait <task> [--match <regex>] [--timeout <secs>]
+
+It blocks outside the conversation, prints the task's output when it finishes,
+and exits with the task's own exit code (124 if it timed out). <task> is an id
+or a name substring, the same selector the tools take. With --match it returns
+on a matching output line instead of on exit, which is how you wait for a dev
+server to come up without waiting for it to end.
 
 A raw cmd is a one-off: it lasts for this session and the user cannot run it
 again without you. If the user wants a task that persists, and no runner entry

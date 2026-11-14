@@ -231,6 +231,13 @@ The asymmetry is on purpose. A wrong refusal costs one extra call. A wrong stop
 kills your dev server, loses whatever state it held, and you would have no
 reason to connect it to the agent.
 
+Finished agent tasks remove themselves from the list five minutes after they
+complete. This is overseer's own `on_complete_dispose` with `require_view`
+cleared. By default its timer starts only once the output buffer is shown in a
+window, and the agent reads output over RPC without ever showing it.
+`dispose_timeout` changes the delay. `dispose_require_view` restores the stock
+behaviour for output the agent wants you to read yourself.
+
 `overseer_run` is for commands that **do not exit on their own**: dev servers,
 file watchers, `--watch` test runs. Short commands that terminate by themselves
 should stay on the agent's normal shell tool, where output is available in-band.
@@ -412,6 +419,41 @@ a healthy dev server would.
 your editor, and `vim.wait` does not process input, so a fifteen-second wait in
 Lua would freeze your session for fifteen seconds. Polling over the local socket
 keeps Neovim responsive, and you never see the round-trips.
+
+### Waits longer than a few seconds: `wait`
+
+While the agent waits inside a tool call, the conversation is blocked. You can't
+ask it anything and it can't do anything else. That's fine for a dev server
+coming up, but not for a ten-minute test run. For those the package has a second
+entry point:
+
+```
+overseer-nvim-mcp wait <task> [--match <regex>] [--lines <n>] [--timeout <secs>]
+```
+
+It connects to the same `$NVIM`, blocks until the task finishes, prints its
+output and exits with the task's own exit code (`124` on timeout, `125` if the
+wait itself failed). `<task>` is an id or a name substring, the same selector
+the tools take. `--match` returns on a matching output line instead, which is
+how you wait for a dev server to come up.
+
+The task itself is unchanged. `overseer_run` starts it in Neovim and it shows up
+in your list as usual. The agent runs `wait` as a background shell command,
+keeps working, and gets woken with the output when the task ends:
+
+```
+overseer_run  { cmd: [...], name: "wait demo" }   ->  { id: 114, status: RUNNING }
+bash          overseer-nvim-mcp wait 114          (backgrounded)
+
+status=SUCCESS exit_code=0 total=11 from=1 waited=exited
+tick 1
+...
+all done
+```
+
+The server instructions give the agent the full command, built from the
+server's own `argv[1]`, since under `npx -y overseer-nvim-mcp` the bin name
+isn't on `PATH`.
 
 ## Slash commands and attachable resources
 

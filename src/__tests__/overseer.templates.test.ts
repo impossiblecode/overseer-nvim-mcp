@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { getRpc } from "../nvim.js";
-import { diagnose, listTemplates, run } from "../overseer.js";
+import { diagnose, listTasks, listTemplates, run } from "../overseer.js";
 import { ensureBinary, fixture, it, trackTasks } from "./overseer.testkit.js";
 
 const track = trackTasks();
@@ -89,6 +89,39 @@ it("run(template) errors on a missing required param instead of prompting", asyn
     expect(Date.now() - startedAt).toBeLessThan(3000);
   } finally {
     // Leave the user's runtimepath as we found it, whatever the outcome.
+    await rpc.execLua(`vim.opt.runtimepath:remove(({...})[1])`, [dir]);
+  }
+});
+
+// run_task ignores Task:start's result, so without a check first this comes
+// back as a PENDING task that never runs.
+it("run(template) reports a command that cannot start instead of leaving it PENDING", async () => {
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "mcp-unstartable-")));
+  const rpc = await getRpc();
+  await rpc.execLua(
+    `
+    local dir = ({...})[1]
+    require('overseer').register_template({
+      name = 'mcp unstartable template',
+      condition = { dir = dir },
+      builder = function() return { cmd = { 'mcp-no-such-binary' } } end,
+    })
+    vim.opt.runtimepath:append(dir)
+  `,
+    [dir],
+  );
+  try {
+    const outcome = await run({ template: "mcp unstartable template", cwd: dir, settleMs: 0 }).then(
+      (started) => {
+        track(started.id);
+        return started;
+      },
+      (e: unknown) => e,
+    );
+    expect(String(outcome)).toMatch(/mcp-no-such-binary.*nvim's PATH/);
+    const left = (await listTasks()).filter((t) => t.name === "mcp unstartable template");
+    expect(left).toEqual([]);
+  } finally {
     await rpc.execLua(`vim.opt.runtimepath:remove(({...})[1])`, [dir]);
   }
 });

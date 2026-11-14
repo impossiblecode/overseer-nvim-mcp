@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { expect, test } from "vitest";
-import { formatTail, registerTools } from "../tools.js";
+import { formatTail } from "../format.js";
+import { registerTools } from "../tools.js";
 
 test("registers all seven overseer tools", () => {
   const server = new McpServer({ name: "overseer", version: "0.1.0" });

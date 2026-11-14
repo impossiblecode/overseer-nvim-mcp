@@ -1,5 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { formatTail } from "./format.js";
 import * as overseer from "./overseer.js";
 
 const selector = z.union([z.number().int(), z.string().min(1)]);
@@ -20,24 +21,6 @@ function guard(fn: () => Promise<string>): Promise<ToolResult> {
 }
 
 const json = (v: unknown) => JSON.stringify(v, null, 2);
-
-/**
- * Render a tail as a status header plus the raw lines. Plain text because the
- * output is the payload; JSON-escaping every newline helps nobody. Exported
- * for tests.
- */
-export function formatTail(res: overseer.TailResult): string {
-  const header = [
-    `status=${res.status}`,
-    res.exit_code === undefined ? null : `exit_code=${res.exit_code}`,
-    `total=${res.total}`,
-    res.lines.length > 0 ? `from=${res.from}` : null,
-    res.waited === undefined ? null : `waited=${res.waited}`,
-  ]
-    .filter((part) => part !== null)
-    .join(" ");
-  return res.lines.length > 0 ? `${header}\n${res.lines.join("\n")}` : header;
-}
 
 export function registerTools(server: McpServer): void {
   server.registerTool(
@@ -99,7 +82,10 @@ export function registerTools(server: McpServer): void {
         "Set `wait_for` to a regular expression to block until a matching line appears; use it " +
         "instead of polling repeatedly. It returns as soon as it matches, or when the task exits, " +
         "or at `timeout_ms` (default 15000, max 120000), and reports which of the three happened " +
-        "as `waited`, so a timeout is never mistaken for success.",
+        "as `waited`, so a timeout is never mistaken for success. " +
+        "`wait_for` is for a wait of a few seconds. This call cannot be backgrounded, so a longer " +
+        "one holds up the conversation for the task's whole duration; wait for those with the " +
+        "`wait` subcommand in your shell instead, as the server instructions describe.",
       inputSchema: {
         task: selector.optional(),
         lines: z
@@ -168,14 +154,43 @@ export function registerTools(server: McpServer): void {
           .optional()
           .describe(
             "Working directory for the task; for `template`, also the directory the template " +
-              "is resolved in. Defaults to nvim's cwd",
+              "is resolved in. A relative path in `cmd[0]` (./script.sh) resolves against it. " +
+              "Defaults to nvim's cwd",
           ),
         params: z.record(z.string(), z.unknown()).optional(),
         settle_ms: z.number().int().nonnegative().optional(),
+        dispose_timeout: z
+          .number()
+          .int()
+          .positive()
+          .max(86400)
+          .optional()
+          .describe(
+            "Seconds a finished task stays in the task list before overseer removes it; " +
+              "default 300. Keep it above ~30: a removed task can no longer be tailed or restarted",
+          ),
+        dispose_require_view: z
+          .boolean()
+          .optional()
+          .describe(
+            "Keep the finished task until the user opens its output in nvim, and only then " +
+              "start counting `dispose_timeout`. Use it for output they should read themselves; " +
+              "your own tail does not count as opening it",
+          ),
       },
       annotations: { destructiveHint: false },
     },
-    (args) => guard(async () => json(await overseer.run({ ...args, settleMs: args.settle_ms }))),
+    (args) =>
+      guard(async () =>
+        json(
+          await overseer.run({
+            ...args,
+            settleMs: args.settle_ms,
+            disposeTimeout: args.dispose_timeout,
+            disposeRequireView: args.dispose_require_view,
+          }),
+        ),
+      ),
   );
 
   server.registerTool(
