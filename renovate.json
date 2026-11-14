@@ -3,6 +3,13 @@
   "extends": ["config:recommended"],
   "semanticCommitType": "deps",
   "semanticCommitScope": null,
+  "packageRules": [
+    {
+      "description": "Types track the lowest Node in engines.",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "22.x"
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
