@@ -1,9 +1,13 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "semanticCommitType": "deps",
   "semanticCommitScope": null,
   "packageRules": [
+    {
+      "description": "Bundled into dist/, so an update needs a release.",
+      "matchPackageNames": ["@modelcontextprotocol/sdk", "zod", "@msgpack/msgpack"],
+      "semanticCommitType": "deps"
+    },
     {
       "description": "Types track the lowest Node in engines.",
       "matchPackageNames": ["@types/node"],
