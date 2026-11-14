@@ -19,6 +19,11 @@
       "description": "Types track the lowest Node in engines.",
       "matchPackageNames": ["@types/node"],
       "allowedVersions": "22.x"
+    },
+    {
+      "description": "Pinned Node versions track the lowest Node in engines.",
+      "matchDepNames": ["node"],
+      "allowedVersions": "/^22/"
     }
   ],
   "customManagers": [
