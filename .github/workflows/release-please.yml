@@ -38,7 +38,7 @@ jobs:
       # for npm provenance
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-please.outputs.tag }}
       - uses: pnpm/action-setup@v4
@@ -84,7 +84,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Check out overseer.nvim
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: stevearc/overseer.nvim
           ref: ${{ env.OVERSEER_REF }}
@@ -137,7 +137,7 @@ jobs:
       # for mcp-publisher login github-oidc
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-please.outputs.tag }}
 
