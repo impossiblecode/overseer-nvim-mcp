@@ -21,7 +21,7 @@ jobs:
       released: ${{ steps.release.outputs.release_created }}
       tag: ${{ steps.release.outputs.tag_name }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
         with:
           # PAT so the release PR gets CI; falls back until the secret exists
@@ -39,11 +39,11 @@ jobs:
       # for npm provenance
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-please.outputs.tag }}
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -85,7 +85,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Check out overseer.nvim
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: stevearc/overseer.nvim
           ref: ${{ env.OVERSEER_REF }}
@@ -138,7 +138,7 @@ jobs:
       # for mcp-publisher login github-oidc
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-please.outputs.tag }}
 

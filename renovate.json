@@ -1,13 +1,29 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
-  "semanticCommitType": "deps",
   "semanticCommitScope": null,
   "packageRules": [
+    {
+      "description": "Tooling that never ships: merge non-major updates once CI is green.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
+      "description": "Bundled into dist/, so an update needs a release.",
+      "matchPackageNames": ["@modelcontextprotocol/sdk", "zod", "@msgpack/msgpack"],
+      "semanticCommitType": "deps",
+      "automerge": false
+    },
     {
       "description": "Types track the lowest Node in engines.",
       "matchPackageNames": ["@types/node"],
       "allowedVersions": "22.x"
+    },
+    {
+      "description": "Pinned Node versions track the lowest Node in engines.",
+      "matchDepNames": ["node"],
+      "allowedVersions": "/^22/"
     }
   ],
   "customManagers": [
