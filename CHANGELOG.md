@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.3...v0.3.0) (2026-11-14)
+
+
+### Features
+
+* auto-dispose finished tasks and add the wait subcommand ([b38f306](https://github.com/impossiblecode/overseer-nvim-mcp/commit/b38f306c7de79d4f4c79d61c25c802598c1c0482))
+
+
+### Bug Fixes
+
+* **deps:** bump bundled MCP SDK, zod and fast-uri to clear security advisories ([6c978de](https://github.com/impossiblecode/overseer-nvim-mcp/commit/6c978deba19d9097ffa4baa35de8a9b74bf67a6e))
+* **run:** report tasks that cannot start and resolve a relative cmd[0] against cwd ([b38f306](https://github.com/impossiblecode/overseer-nvim-mcp/commit/b38f306c7de79d4f4c79d61c25c802598c1c0482))
+* **server:** advertise the node path as launched, not the resolved install dir ([b38f306](https://github.com/impossiblecode/overseer-nvim-mcp/commit/b38f306c7de79d4f4c79d61c25c802598c1c0482))
+
 ## [0.2.3](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.2...v0.2.3) (2026-08-11)
 
 
