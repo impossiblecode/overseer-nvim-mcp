@@ -4,9 +4,16 @@
   "semanticCommitScope": null,
   "packageRules": [
     {
+      "description": "Tooling that never ships: merge non-major updates once CI is green.",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true
+    },
+    {
       "description": "Bundled into dist/, so an update needs a release.",
       "matchPackageNames": ["@modelcontextprotocol/sdk", "zod", "@msgpack/msgpack"],
-      "semanticCommitType": "deps"
+      "semanticCommitType": "deps",
+      "automerge": false
     },
     {
       "description": "Types track the lowest Node in engines.",
