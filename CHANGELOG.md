@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0-beta.0](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.3.1...v1.0.0-beta.0) (2026-11-15)
+
+
+### ⚠ BREAKING CHANGES
+
+* serve the 2026-07-28 MCP revision on SDK v2 and require Node >= 24
+
+### Features
+
+* serve the 2026-07-28 MCP revision on SDK v2 and require Node &gt;= 24 ([5caf78c](https://github.com/impossiblecode/overseer-nvim-mcp/commit/5caf78c60040958a5e4502b4a9c30ff1d9c2fe74))
+
 ## [0.3.1](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.3.0...v0.3.1) (2026-11-15)
 
 
