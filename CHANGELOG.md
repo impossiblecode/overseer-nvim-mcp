@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.3.0...v0.3.1) (2026-11-15)
+
+
+### Bug Fixes
+
+* name --lines in the wait usage in instructions ([dca022e](https://github.com/impossiblecode/overseer-nvim-mcp/commit/dca022e9353b5bc47e29a65c347622f2c57fd4ac))
+
 ## [0.3.0](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.2.3...v0.3.0) (2026-11-14)
 
 

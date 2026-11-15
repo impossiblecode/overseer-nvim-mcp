@@ -43,6 +43,7 @@ test("instructions point at the wait subcommand, and say to background it", () =
   expect(INSTRUCTIONS).toMatch(/wait <task>/);
   expect(INSTRUCTIONS).toMatch(/background/i);
   expect(INSTRUCTIONS).toMatch(/--match/);
+  expect(INSTRUCTIONS).toMatch(/--lines/);
 });
 
 // INSTRUCTIONS is built once at startup, so the node it names has to survive a
