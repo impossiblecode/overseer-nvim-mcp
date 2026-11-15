@@ -1,4 +1,4 @@
-import type { TailResult } from "./overseer.js";
+import type { TailResult } from "./overseer.ts";
 
 /**
  * Status header plus the raw lines, as plain text so the output isn't

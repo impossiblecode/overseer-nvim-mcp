@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { describe, expect, test } from "vitest";
-import { buildServer, INSTRUCTIONS, nodeCommand } from "../server.js";
+import { buildServer, INSTRUCTIONS, nodeCommand } from "../server.ts";
 
 // What the client actually receives. The private field is the only
 // observable short of a full transport handshake.

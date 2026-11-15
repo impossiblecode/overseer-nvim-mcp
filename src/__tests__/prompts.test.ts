@@ -1,8 +1,8 @@
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { expect, test } from "vitest";
-import { registerPrompts } from "../prompts.js";
-import { it } from "./overseer.testkit.js";
+import { registerPrompts } from "../prompts.ts";
+import { it } from "./overseer.testkit.ts";
 
 type PromptCb = (args: Record<string, string>) => Promise<{
   messages: { content: { text: string } }[];

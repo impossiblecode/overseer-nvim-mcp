@@ -2,10 +2,10 @@ import { accessSync, constants } from "node:fs";
 import { delimiter, isAbsolute, join } from "node:path";
 import { McpServer } from "@modelcontextprotocol/server";
 import pkg from "../package.json" with { type: "json" };
-import { insideNvim } from "./nvim.js";
-import { registerPrompts } from "./prompts.js";
-import { registerResources } from "./resources.js";
-import { registerTools } from "./tools.js";
+import { insideNvim } from "./nvim.ts";
+import { registerPrompts } from "./prompts.ts";
+import { registerResources } from "./resources.ts";
+import { registerTools } from "./tools.ts";
 
 /**
  * The node binary as it was launched. execPath has its symlinks resolved, so it

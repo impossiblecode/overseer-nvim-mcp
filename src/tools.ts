@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import { formatTail } from "./format.js";
-import * as overseer from "./overseer.js";
+import { formatTail } from "./format.ts";
+import * as overseer from "./overseer.ts";
 
 const selector = z.union([z.number().int(), z.string().min(1)]);
 

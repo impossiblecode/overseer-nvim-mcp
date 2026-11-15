@@ -1,6 +1,6 @@
-import { formatTail } from "./format.js";
-import { closeRpc } from "./nvim.js";
-import { waitForTask } from "./overseer.js";
+import { formatTail } from "./format.ts";
+import { closeRpc } from "./nvim.ts";
+import { waitForTask } from "./overseer.ts";
 
 /**
  * `overseer-nvim-mcp wait`: block until a task finishes, print its output and

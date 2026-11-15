@@ -2,8 +2,8 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, test } from "vitest";
-import { getRpc, insideNvim } from "../nvim.js";
-import { dispose, listTasks, type TaskInfo } from "../overseer.js";
+import { getRpc, insideNvim } from "../nvim.ts";
+import { dispose, listTasks, type TaskInfo } from "../overseer.ts";
 
 /**
  * Shared fixtures for the overseer.*.test.ts files. Not a .test.ts itself,

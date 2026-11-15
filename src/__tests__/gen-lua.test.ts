@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { composeChunk, emitModule, generate, keyFor, parseNeeds } from "../../scripts/gen-lua.js";
+import { composeChunk, emitModule, generate, keyFor, parseNeeds } from "../../scripts/gen-lua.ts";
 
 test("parseNeeds reads directive lines, whitespace-separated", () => {
   expect(parseNeeds("-- needs: nilify\nlocal x = 1\n")).toEqual(["nilify"]);

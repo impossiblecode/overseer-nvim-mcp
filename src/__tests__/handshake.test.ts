@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/client";
 import { getDefaultEnvironment, StdioClientTransport } from "@modelcontextprotocol/client/stdio";
 import { afterEach, describe, expect, test } from "vitest";
-import { it } from "./overseer.testkit.js";
+import { it } from "./overseer.testkit.ts";
 
 const TSX_CLI = fileURLToPath(new URL("../../node_modules/tsx/dist/cli.mjs", import.meta.url));
 const BIN = fileURLToPath(new URL("../../bin/overseer-nvim-mcp.ts", import.meta.url));

@@ -1,4 +1,4 @@
-import { NvimRpc } from "./rpc.js";
+import { NvimRpc } from "./rpc.ts";
 
 export class NvimUnavailableError extends Error {
   constructor(message = "not running inside nvim ($NVIM is unset)") {

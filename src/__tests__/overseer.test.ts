@@ -2,8 +2,8 @@ import { mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect } from "vitest";
-import { getRpc } from "../nvim.js";
-import { dispose, listTasks, OverseerError, restart, run, stop } from "../overseer.js";
+import { getRpc } from "../nvim.ts";
+import { dispose, listTasks, OverseerError, restart, run, stop } from "../overseer.ts";
 import {
   it,
   nodeCmd,
@@ -11,7 +11,7 @@ import {
   stayAlive,
   trackTasks,
   waitForExit,
-} from "./overseer.testkit.js";
+} from "./overseer.testkit.ts";
 
 // Core task lifecycle, plus selector safety and provenance. Tail behaviour lives
 // in overseer.tail.test.ts and template discovery in overseer.templates.test.ts.

@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { expect, test } from "vitest";
-import { run } from "../overseer.js";
-import { registerResources } from "../resources.js";
-import { it, nodeCmd, stayAlive, trackTasks } from "./overseer.testkit.js";
+import { run } from "../overseer.ts";
+import { registerResources } from "../resources.ts";
+import { it, nodeCmd, stayAlive, trackTasks } from "./overseer.testkit.ts";
 
 const track = trackTasks();
 

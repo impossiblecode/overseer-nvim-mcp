@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { completable } from "@modelcontextprotocol/server";
 import { z } from "zod";
-import * as overseer from "./overseer.js";
+import * as overseer from "./overseer.ts";
 
 /**
  * User-invoked prompts, shown by clients as slash commands. Not callable by

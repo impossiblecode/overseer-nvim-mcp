@@ -1,6 +1,6 @@
 import { expect } from "vitest";
-import { run, tail } from "../overseer.js";
-import { it, nodeCmd, sleep, stayAlive, trackTasks } from "./overseer.testkit.js";
+import { run, tail } from "../overseer.ts";
+import { it, nodeCmd, sleep, stayAlive, trackTasks } from "./overseer.testkit.ts";
 
 const track = trackTasks();
 

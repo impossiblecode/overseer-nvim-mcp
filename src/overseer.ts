@@ -1,6 +1,6 @@
 import vm from "node:vm";
-import { LUA } from "./lua.gen.js";
-import { getRpc } from "./nvim.js";
+import { LUA } from "./lua.gen.ts";
+import { getRpc } from "./nvim.ts";
 
 export type TaskInfo = {
   id: number;

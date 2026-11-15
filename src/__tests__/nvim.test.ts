@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { getRpc, insideNvim, NvimUnavailableError, nvimSocket } from "../nvim.js";
+import { getRpc, insideNvim, NvimUnavailableError, nvimSocket } from "../nvim.ts";
 
 test("insideNvim reflects $NVIM presence", () => {
   const saved = process.env.NVIM;

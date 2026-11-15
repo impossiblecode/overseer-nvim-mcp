@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Decoder, encode } from "@msgpack/msgpack";
 import { expect, test } from "vitest";
-import { NvimRpc } from "../rpc.js";
+import { NvimRpc } from "../rpc.ts";
 
 const isWindows = process.platform === "win32";
 

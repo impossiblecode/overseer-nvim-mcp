@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
-import { it } from "./overseer.testkit.js";
+import { it } from "./overseer.testkit.ts";
 
 const TSX_CLI = fileURLToPath(new URL("../../node_modules/tsx/dist/cli.mjs", import.meta.url));
 const BIN = fileURLToPath(new URL("../../bin/overseer-nvim-mcp.ts", import.meta.url));

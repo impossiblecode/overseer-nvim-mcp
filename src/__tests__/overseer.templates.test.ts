@@ -2,9 +2,9 @@ import { mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { getRpc } from "../nvim.js";
-import { diagnose, listTasks, listTemplates, run } from "../overseer.js";
-import { ensureBinary, fixture, it, trackTasks } from "./overseer.testkit.js";
+import { getRpc } from "../nvim.ts";
+import { diagnose, listTasks, listTemplates, run } from "../overseer.ts";
+import { ensureBinary, fixture, it, trackTasks } from "./overseer.testkit.ts";
 
 const track = trackTasks();
 

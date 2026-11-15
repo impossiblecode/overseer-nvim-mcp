@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { ResourceTemplate } from "@modelcontextprotocol/server";
-import * as overseer from "./overseer.js";
+import * as overseer from "./overseer.ts";
 
 /**
  * The user or client attaches these; the model has no access to them. Tools

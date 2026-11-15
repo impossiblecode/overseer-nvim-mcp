@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { expect } from "vitest";
-import { listTasks, run, waitForTask } from "../overseer.js";
-import { it, nodeCmd, stayAlive, trackTasks } from "./overseer.testkit.js";
+import { listTasks, run, waitForTask } from "../overseer.ts";
+import { it, nodeCmd, stayAlive, trackTasks } from "./overseer.testkit.ts";
 
 const track = trackTasks();
 

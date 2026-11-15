@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
-import { closeRpc } from "../src/nvim.js";
-import { buildServer } from "../src/server.js";
-import { runWait } from "../src/wait.js";
+import { closeRpc } from "../src/nvim.ts";
+import { buildServer } from "../src/server.ts";
+import { runWait } from "../src/wait.ts";
 
 // `wait <task>` is the CLI; anything else starts the server.
 if (process.argv[2] === "wait") {
