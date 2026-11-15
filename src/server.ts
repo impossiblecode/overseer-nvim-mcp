@@ -76,13 +76,14 @@ tool call cannot be backgrounded, so the conversation stalls for as long as the
 task runs. Run this instead, as a BACKGROUND shell command if your shell tool
 has one:
 
-  ${WAIT_CMD} wait <task> [--match <regex>] [--timeout <secs>]
+  ${WAIT_CMD} wait <task> [--match <regex>] [--lines <n>] [--timeout <secs>]
 
-It blocks outside the conversation, prints the task's output when it finishes,
-and exits with the task's own exit code (124 if it timed out). <task> is an id
-or a name substring, the same selector the tools take. With --match it returns
-on a matching output line instead of on exit, which is how you wait for a dev
-server to come up without waiting for it to end.
+It blocks outside the conversation, prints the task's last 20 output lines when
+it finishes (more with --lines), and exits with the task's own exit code (124
+if it timed out). <task> is an id or a name substring, the same selector the
+tools take. With --match it returns on a matching output line instead of on
+exit, which is how you wait for a dev server to come up without waiting for it
+to end.
 
 A raw cmd is a one-off: it lasts for this session and the user cannot run it
 again without you. If the user wants a task that persists, and no runner entry
