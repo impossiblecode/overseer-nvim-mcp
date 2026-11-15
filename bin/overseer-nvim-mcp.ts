@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import { closeRpc } from "../src/nvim.js";
 import { buildServer } from "../src/server.js";
 import { runWait } from "../src/wait.js";
@@ -15,10 +15,11 @@ if (process.argv[2] === "wait") {
   );
 }
 
-await buildServer().connect(new StdioServerTransport());
+// not serveStdio(buildServer): the factory gets a request context, which
+// buildServer would take as onRegister
+serveStdio(() => buildServer());
 
-// The SDK transport only watches stdin 'data', so it never notices the client
-// hanging up, and an open nvim socket would keep the process alive forever.
+// the open nvim socket keeps the process alive after the client hangs up
 function shutdown(): void {
   closeRpc();
   process.exit(0);

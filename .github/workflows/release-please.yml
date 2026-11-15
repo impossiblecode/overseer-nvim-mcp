@@ -45,10 +45,8 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
-      # trusted publishing needs npm >= 11.5.1; node 22 bundles npm 10
-      - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
 

@@ -1,5 +1,5 @@
-import { getCompleter } from "@modelcontextprotocol/sdk/server/completable.js";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { Client } from "@modelcontextprotocol/client";
+import { InMemoryTransport, McpServer } from "@modelcontextprotocol/server";
 import { expect, test } from "vitest";
 import { registerPrompts } from "../prompts.js";
 import { it } from "./overseer.testkit.js";
@@ -8,20 +8,14 @@ type PromptCb = (args: Record<string, string>) => Promise<{
   messages: { content: { text: string } }[];
 }>;
 
-/** Whatever getCompleter accepts, without reaching into the SDK's internals. */
-type Schema = Parameters<typeof getCompleter>[0];
-type Entry = { description?: string; argsSchema: Record<string, Schema>; cb: PromptCb };
+type Entry = { description?: string; cb: PromptCb };
 
 /** Capture registrations so a handler can be invoked without a transport. */
 function capture(): Map<string, Entry> {
   const server = new McpServer({ name: "t", version: "0" });
   const found = new Map<string, Entry>();
-  server.registerPrompt = ((
-    name: string,
-    config: { description?: string; argsSchema?: Record<string, Schema> },
-    cb: PromptCb,
-  ) => {
-    found.set(name, { description: config.description, argsSchema: config.argsSchema ?? {}, cb });
+  server.registerPrompt = ((name: string, config: { description?: string }, cb: PromptCb) => {
+    found.set(name, { description: config.description, cb });
     return undefined as never;
   }) as never;
   registerPrompts(server);
@@ -73,11 +67,28 @@ it("diagnose reports why each provider found nothing", async () => {
   expect(text).toMatch(/No .* found|not found/);
 });
 
-it("diagnose completes cwd with the directories that are actually in play", async () => {
-  const completer = getCompleter(capture().get("diagnose")!.argsSchema.cwd);
-  expect(completer, "cwd argument is not completable").toBeDefined();
+async function completeCwd(): Promise<(value: string) => Promise<string[]>> {
+  const server = new McpServer({ name: "t", version: "0" });
+  registerPrompts(server);
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverSide);
+  const client = new Client({ name: "t", version: "0" });
+  await client.connect(clientSide);
+  // a completer the SDK can't find drops the capability silently
+  expect(client.getServerCapabilities()?.completions, "completions not advertised").toBeDefined();
+  return async (value) =>
+    (
+      await client.complete({
+        ref: { type: "ref/prompt", name: "diagnose" },
+        argument: { name: "cwd", value },
+      })
+    ).completion.values;
+}
 
-  const all = (await completer!("")) as string[];
+it("diagnose completes cwd with the directories that are actually in play", async () => {
+  const completer = await completeCwd();
+
+  const all = await completer("");
   // nvim's cwd and the server's, deduped when they coincide: exactly the
   // pair the caller needs, since providers search both.
   expect(all.length).toBeGreaterThan(0);
@@ -86,8 +97,8 @@ it("diagnose completes cwd with the directories that are actually in play", asyn
 
   // Filters on what has been typed, and offers nothing rather than everything
   // when nothing matches.
-  expect(await completer!("/zzz-definitely-not-a-prefix")).toEqual([]);
-  expect(await completer!(all[0]!.slice(0, 4))).toContain(all[0]);
+  expect(await completer("/zzz-definitely-not-a-prefix")).toEqual([]);
+  expect(await completer(all[0]!.slice(0, 4))).toContain(all[0]);
 });
 
 it("diagnose flags a searched dir that differs from nvim's cwd", async () => {

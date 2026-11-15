@@ -1,5 +1,5 @@
-import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
+import { completable } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import * as overseer from "./overseer.js";
 
@@ -45,10 +45,10 @@ export function registerPrompts(server: McpServer): void {
         "Define a persistent task for this project without any task runner: no npm script, " +
         "Makefile or Taskfile. Uses overseer's own register_template via a .nvim.lua that stays " +
         "out of version control if you want it to.",
-      argsSchema: {
+      argsSchema: z.object({
         name: z.string().describe("Name the task will appear under in the task list"),
         cmd: z.string().describe("Shell command to run, e.g. 'psql < seed.sql'"),
-      },
+      }),
     },
     async ({ name, cmd }) => {
       const d = await overseer.diagnose().catch(() => null);
@@ -105,19 +105,20 @@ export function registerPrompts(server: McpServer): void {
       description:
         "Work out why overseer is not showing the tasks you expect, or why a task's output " +
         "looks empty. Reports what each provider actually tried and why it found nothing.",
-      argsSchema: {
+      argsSchema: z.object({
         // "I was looking at the wrong directory" is the most common thing this
         // prompt discovers; offering nvim's cwd and the client's up front
         // pre-empts the diagnosis.
+        // .optional() outside completable(), or the SDK never finds the completer
         cwd: completable(
-          z.string().optional().describe("Directory to inspect; defaults to the server's"),
+          z.string().describe("Directory to inspect; defaults to the server's"),
           async (value) => {
             const nvim = await overseer.nvimCwd().catch(() => null);
             const candidates = [...new Set([nvim, process.cwd()].filter((d) => d !== null))];
             return candidates.filter((d) => d.startsWith(value ?? ""));
           },
-        ),
-      },
+        ).optional(),
+      }),
     },
     async ({ cwd }) => {
       const d = await overseer.diagnose(cwd || undefined);

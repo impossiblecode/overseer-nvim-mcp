@@ -1,6 +1,6 @@
 import { accessSync, constants } from "node:fs";
 import { delimiter, isAbsolute, join } from "node:path";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/server";
 import pkg from "../package.json" with { type: "json" };
 import { insideNvim } from "./nvim.js";
 import { registerPrompts } from "./prompts.js";

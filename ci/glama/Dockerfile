@@ -1,14 +1,14 @@
 # Glama's release scan image (smoke.sh runs the same check locally), not an
 # install method.
 
-FROM node:22-slim AS build
+FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM node:22-slim
+FROM node:24-slim
 # OVERSEER_REF matches ci.yml
 ARG NVIM_VERSION=v0.12.4
 ARG OVERSEER_REF=v2.1.0

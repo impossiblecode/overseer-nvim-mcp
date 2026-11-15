@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { describe, expect, test } from "vitest";
 import { buildServer, INSTRUCTIONS, nodeCommand } from "../server.js";
 

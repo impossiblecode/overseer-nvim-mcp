@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { formatTail } from "./format.js";
 import * as overseer from "./overseer.js";
@@ -31,7 +31,7 @@ export function registerTools(server: McpServer): void {
         "List running and completed overseer.nvim tasks (id, name, status), newest first. " +
         "`origin` is 'agent' for tasks this server started and 'user' for the ones they started " +
         "themselves; only clean up your own.",
-      inputSchema: {},
+      inputSchema: z.object({}),
       annotations: { readOnlyHint: true },
     },
     () => guard(async () => json(await overseer.listTasks())),
@@ -54,13 +54,13 @@ export function registerTools(server: McpServer): void {
         "already running, which is your signal not to start a second one. " +
         "Pass `filter` to match a substring against name and desc; worth doing in a large " +
         "monorepo, where this can return well over eighty entries.",
-      inputSchema: {
+      inputSchema: z.object({
         cwd: z
           .string()
           .optional()
           .describe("Directory to search; defaults to nvim's current working directory"),
         filter: z.string().optional(),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     (args) => guard(async () => json(await overseer.listTemplates(args.cwd, args.filter))),
@@ -86,7 +86,7 @@ export function registerTools(server: McpServer): void {
         "`wait_for` is for a wait of a few seconds. This call cannot be backgrounded, so a longer " +
         "one holds up the conversation for the task's whole duration; wait for those with the " +
         "`wait` subcommand in your shell instead, as the server instructions describe.",
-      inputSchema: {
+      inputSchema: z.object({
         task: selector.optional(),
         lines: z
           .number()
@@ -100,7 +100,7 @@ export function registerTools(server: McpServer): void {
         since: z.number().int().nonnegative().optional(),
         wait_for: z.string().optional(),
         timeout_ms: z.number().int().positive().optional(),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     (args) =>
@@ -139,7 +139,7 @@ export function registerTools(server: McpServer): void {
         "Templates that declare `params` need them supplied here; pass `params` as an object of " +
         "name to value. A missing required param comes back as an error naming what it wanted " +
         "rather than a prompt opening in the editor.",
-      inputSchema: {
+      inputSchema: z.object({
         cmd: z.array(z.string()).optional(),
         template: z.string().optional(),
         name: z
@@ -177,7 +177,7 @@ export function registerTools(server: McpServer): void {
               "start counting `dispose_timeout`. Use it for output they should read themselves; " +
               "your own tail does not count as opening it",
           ),
-      },
+      }),
       annotations: { destructiveHint: false },
     },
     (args) =>
@@ -201,7 +201,7 @@ export function registerTools(server: McpServer): void {
         "Restart a task by id or name substring (stops it first if running). " +
         "A name matching more than one task is an error listing the candidates; pass a numeric " +
         "id instead. Running tasks the user started are refused unless `force` is set.",
-      inputSchema: { task: selector, force: z.boolean().optional() },
+      inputSchema: z.object({ task: selector, force: z.boolean().optional() }),
       annotations: { destructiveHint: true },
     },
     (args) => guard(async () => json(await overseer.restart(args.task, args.force))),
@@ -216,7 +216,7 @@ export function registerTools(server: McpServer): void {
         "so the task's process tree is torn down rather than left orphaned. " +
         "A name matching more than one task is an error listing the candidates. Running tasks the " +
         "user started are refused unless `force` is set, since a substring like 'dev' can match theirs.",
-      inputSchema: { task: selector, force: z.boolean().optional() },
+      inputSchema: z.object({ task: selector, force: z.boolean().optional() }),
       annotations: { destructiveHint: true, idempotentHint: true },
     },
     (args) => guard(async () => json(await overseer.stop(args.task, args.force))),
@@ -230,7 +230,7 @@ export function registerTools(server: McpServer): void {
         "Stop (if running) and remove a task from the list by id or name substring. " +
         "Disposing a finished task is unguarded; a running one the user started is refused " +
         "unless `force` is set. A name matching more than one task is an error.",
-      inputSchema: { task: selector, force: z.boolean().optional() },
+      inputSchema: z.object({ task: selector, force: z.boolean().optional() }),
       annotations: { destructiveHint: true, idempotentHint: true },
     },
     (args) => guard(async () => json(await overseer.dispose(args.task, args.force))),

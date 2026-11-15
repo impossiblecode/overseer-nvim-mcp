@@ -11,19 +11,19 @@
     },
     {
       "description": "Bundled into dist/, so an update needs a release.",
-      "matchPackageNames": ["@modelcontextprotocol/sdk", "zod", "@msgpack/msgpack"],
+      "matchPackageNames": ["@modelcontextprotocol/server", "zod", "@msgpack/msgpack"],
       "semanticCommitType": "deps",
       "automerge": false
     },
     {
       "description": "Types track the lowest Node in engines.",
       "matchPackageNames": ["@types/node"],
-      "allowedVersions": "22.x"
+      "allowedVersions": "24.x"
     },
     {
       "description": "Pinned Node versions track the lowest Node in engines.",
       "matchDepNames": ["node"],
-      "allowedVersions": "/^22/"
+      "allowedVersions": "/^24/"
     }
   ],
   "customManagers": [

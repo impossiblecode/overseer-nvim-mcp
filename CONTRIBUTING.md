@@ -2,7 +2,7 @@
 
 ## Setup
 
-Requires **Node >= 22** and **pnpm** (the repo pins a version via `packageManager`,
+Requires **Node >= 24** and **pnpm** (the repo pins a version via `packageManager`,
 so Corepack will pick it up automatically).
 
 ```
@@ -46,7 +46,7 @@ preference.
 feat: add overseer_run cwd option        -> minor bump, "Features"
 fix: trim PTY padding before slicing     -> patch bump, "Bug Fixes"
 docs: clarify $NVIM transport            -> no bump, "Documentation"
-deps: bump @modelcontextprotocol/sdk     -> patch bump, "Dependencies"
+deps: bump @modelcontextprotocol/server  -> patch bump, "Dependencies"
 chore: / test: / ci: / refactor:         -> no bump, hidden from changelog
 ```
 
@@ -145,7 +145,7 @@ with a concrete use case before sending a PR that adds one.
 
 ## Pull requests
 
-CI must be green: lint, typecheck, tests against live overseer on Node 22 and 24,
+CI must be green: lint, typecheck, tests against live overseer on Node 24 and 26,
 and a build that installs the packed tarball as a consumer would. Please keep
 new behaviour covered by a test, especially anything touching `src/lua/`,
 which is the only part that cannot be verified without a real overseer.

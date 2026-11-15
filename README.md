@@ -23,7 +23,7 @@ long-running commands become real overseer tasks.
 
 - Neovim with [overseer.nvim](https://github.com/stevearc/overseer.nvim)
   (tested against `v2.1.0`)
-- Node >= 22
+- Node >= 24
 - An MCP client running **inside** a Neovim terminal buffer
 
 ## Install
