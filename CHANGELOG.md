@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.0-beta.1](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v1.0.0-beta.0...v1.0.0-beta.1) (2026-11-16)
+
+
+### Features
+
+* follow overseer tasks to the end as MCP tasks from overseer_run and overseer_restart ([4175c3a](https://github.com/impossiblecode/overseer-nvim-mcp/commit/4175c3a78e4eef7187ed268485c23d0f671e6301))
+
+
+### Documentation
+
+* replace figurative idioms with what actually happens ([04e398d](https://github.com/impossiblecode/overseer-nvim-mcp/commit/04e398d2fe9cbb1b0ea3d5acba3ad72ecb310ee6))
+
 ## [1.0.0-beta.0](https://github.com/impossiblecode/overseer-nvim-mcp/compare/v0.3.1...v1.0.0-beta.0) (2026-11-15)
 
 
