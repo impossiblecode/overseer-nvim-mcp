@@ -66,7 +66,7 @@ end
 
 -- Refusing costs one force flag; wrongly stopping the user's dev server costs
 -- real state, and they would not attribute it to the agent. Only running tasks
--- are guarded: disposing a finished one just removes a dead row.
+-- are guarded: disposing a finished one stops nothing.
 local function guard(task, force)
   if force == true then
     return nil

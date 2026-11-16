@@ -147,7 +147,7 @@ export function registerPrompts(server: McpServer): void {
         "",
         ...providerLines,
         "",
-        "Known causes, in the order they actually bite:",
+        "Known causes, most common first:",
         "",
         '1. **The provider\'s binary is missing.** A provider reporting `Command "X" not found` ' +
           "is not broken; overseer will not offer tasks it has no way to run. Likewise " +

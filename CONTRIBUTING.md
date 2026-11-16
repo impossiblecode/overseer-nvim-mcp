@@ -93,7 +93,7 @@ form per platform. CI builds and smoke-tests on Linux, macOS and Windows, but
 only runs the integration suite on Linux and macOS, so Windows against a live
 overseer is currently unverified rather than known good.
 
-## Things that will bite you
+## Rules that are easy to break
 
 **Do not add socket discovery.** No cwd hashing, `lsof`, or `pgrep`. `$NVIM` is
 the entire transport. Both alternatives were tried and are structurally broken: a

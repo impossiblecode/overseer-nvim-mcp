@@ -215,8 +215,9 @@ source, so a task name cannot become code execution.
 
 ## It shares your task list, so it stays out of your tasks
 
-The task list has two writers now, and only one of them can see it. Two things
-keep that from biting:
+You and the agent now start and stop tasks in the same list, and the agent
+can't see which ones you are using. Two rules stop it from acting on yours by
+mistake:
 
 - **A substring matching more than one task is an error** that lists the
   candidates and asks for a numeric id. `"dev"` matches a dozen names in a
@@ -224,8 +225,8 @@ keep that from biting:
 - **Tasks are tagged with who started them.** `overseer_list_tasks` reports `origin`
   as `agent` or `user`, and `overseer_stop`, `overseer_restart` and
   `overseer_dispose` refuse a **running** task you started yourself unless
-  `force` is passed. Finished tasks are unguarded, since removing a dead row
-  costs nothing.
+  `force` is passed. Finished tasks are not guarded: removing one doesn't stop
+  anything.
 
 The asymmetry is on purpose. A wrong refusal costs one extra call. A wrong stop
 kills your dev server, loses whatever state it held, and you would have no
