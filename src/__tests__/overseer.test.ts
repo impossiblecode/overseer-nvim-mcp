@@ -157,15 +157,26 @@ it("run(cmd) reports a cwd that is not a directory", async () => {
 });
 
 // Any other strategy failure; a throwing jobstart stands in for one.
+// The failure is keyed to this command: other test files start tasks in the
+// same nvim at the same time.
 it("run(cmd) reports a task overseer failed to start, and removes it", async () => {
   const rpc = await getRpc();
-  await rpc.execLua(`
+  const cmd = nodeCmd("/* mcp strategy failure */ 0");
+  await rpc.execLua(
+    `
+    local doomed = ({...})[1]
     local b = require('overseer').builtin
-    _G.__mcp_jobstart = b.jobstart
-    b.jobstart = function() error('simulated strategy failure') end
-  `);
+    local real = b.jobstart
+    _G.__mcp_jobstart = real
+    b.jobstart = function(cmd, ...)
+      if vim.deep_equal(cmd, doomed) then error('simulated strategy failure') end
+      return real(cmd, ...)
+    end
+  `,
+    [cmd],
+  );
   try {
-    const err = await runUnstartable({ cmd: nodeCmd("0"), name: "mcp strategy failure" });
+    const err = await runUnstartable({ cmd, name: "mcp strategy failure" });
     expect(err).toBeInstanceOf(OverseerError);
     expect(String(err)).toMatch(/did not start.*overseer\.log/);
     expect(await leftover("mcp strategy failure")).toEqual([]);
