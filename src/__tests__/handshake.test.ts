@@ -21,6 +21,7 @@ const TOOLS = [
   "overseer_run",
   "overseer_stop",
   "overseer_tail",
+  "overseer_wait",
 ];
 
 const open: Client[] = [];

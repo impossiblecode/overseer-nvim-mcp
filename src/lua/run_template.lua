@@ -1,4 +1,4 @@
--- needs: nilify dispose_component unstartable
+-- needs: nilify dispose_component unstartable journal
 -- args: (name: string, cwd: string|nil, params: table|nil, dispose_timeout: number, dispose_require_view: boolean)
 local name, cwd, params = ({ ... })[1], nilify(({ ... })[2]), nilify(({ ... })[3])
 local dispose_timeout, dispose_require_view = ({ ... })[4], ({ ... })[5]
@@ -48,9 +48,11 @@ if task then
     task:dispose()
     return { error = 'cannot start ' .. tostring(name) .. ': ' .. why }
   end
+  journal_follow(task)
+  local seq = journal_seq()
   -- PENDING after start can be the dependencies component, so no check here
   task:start()
-  return { id = task.id, name = task.name }
+  return { id = task.id, name = task.name, seq = seq }
 end
 if not done then
   return { error = 'timed out starting template ' .. tostring(name) }

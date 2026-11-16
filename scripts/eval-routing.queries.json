@@ -5,8 +5,7 @@
   },
   {
     "query": "Bring up the dev server and tell me when it's ready",
-    "should_route": true,
-    "should_wait": false
+    "should_route": true
   },
   {
     "query": "Run the tests in watch mode and leave them running",

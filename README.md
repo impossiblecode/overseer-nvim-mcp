@@ -180,8 +180,9 @@ talks to whatever overseer configuration you already have.
 | `overseer_list_tasks` | Tasks with id, name, status, `exit_code`, `cmd`, `cwd`, timings, `origin` |
 | `overseer_list_templates` | Templates in a directory (npm, go-task, make, just, VS Code) with `provider`, `desc`, `params` |
 | `overseer_tail` | A task's output, with status; can block until a pattern appears |
-| `overseer_run` | Start a long-running command: a raw `cmd` array, or a `template` with `params` |
-| `overseer_restart` | Restart a task by id or name substring |
+| `overseer_run` | Start a long-running command: a raw `cmd` array, or a `template` with `params`; `wait` or `match` follows it to the end |
+| `overseer_wait` | Follow a task you didn't start until it ends or prints a matching line |
+| `overseer_restart` | Restart a task by id or name substring; takes `wait` and `match` too |
 | `overseer_stop` | Stop a running task |
 | `overseer_dispose` | Stop and remove a task from the list |
 
@@ -198,7 +199,7 @@ child of that client, inherits it in turn.
 
 Everything else follows from that:
 
-- With **`$NVIM` set**, the server registers seven tools, each one
+- With **`$NVIM` set**, the server registers eight tools, each one
   `nvim_exec_lua` against overseer over msgpack-RPC.
 - With **`$NVIM` unset**, it registers nothing and gets out of the way. Running
   outside Neovim is a no-op rather than an error.
@@ -294,7 +295,8 @@ initialize result, and clients that surface those put them in the agent's system
 prompt, where it is actually looking rather than buried among fifty tool
 descriptions. It states the lifetime boundary (long-running here, short commands
 on the shell) and tells the agent to check templates before reconstructing a
-command, use `wait_for` instead of polling, and clean up only its own tasks.
+command, follow long tasks with `wait` instead of polling, and clean up only
+its own tasks.
 
 The server withholds those instructions when `$NVIM` is unset, for the same
 reason it registers no tools: a session that gets none should not be told how to
@@ -333,11 +335,12 @@ Start dev servers, file watchers and `--watch` test runs with `overseer_run`,
 not the shell. They then appear in my task list, I can stop them myself, and
 their process trees get torn down properly instead of being orphaned.
 
-Short commands that exit on their own stay on the shell: their output is
-in-band there, which is what you want.
+Short commands that exit on their own stay on the shell, even when the repo
+has a template for them: their output is in-band there, which is what you want.
 
-Check `overseer_list_templates` first. If the repo declares one that matches, run
-it by name rather than reconstructing the command.
+Before starting a long-running command, check `overseer_list_templates`. If the
+repo declares one that matches, run it by name rather than reconstructing the
+command.
 ```
 
 If that still isn't enough, a `PreToolUse` hook makes it deterministic. This one
@@ -421,12 +424,34 @@ your editor, and `vim.wait` does not process input, so a fifteen-second wait in
 Lua would freeze your session for fifteen seconds. Polling over the local socket
 keeps Neovim responsive, and you never see the round-trips.
 
-### Waits longer than a few seconds: `wait`
+### Waits longer than a few seconds
 
 While the agent waits inside a tool call, the conversation is blocked. You can't
 ask it anything and it can't do anything else. That's fine for a dev server
-coming up, but not for a ten-minute test run. For those the package has a second
-entry point:
+coming up, but not for a ten-minute test run.
+
+On clients that support MCP tasks (Claude Code does), `overseer_run` with
+`wait: true` returns a task the client follows in the background. The agent
+keeps working and is told when the overseer task exits, fails, is stopped,
+restarted or disposed, with its exit code, last output lines and any
+diagnostics overseer parsed. With `match` instead, it is told when a matching
+line appears, which is how it waits for a dev server to come up. `overseer_wait`
+does the same for a task the agent didn't start.
+
+```
+overseer_run  { cmd: [...], name: "tests", wait: true }   ->  background task
+
+MCP task completed:
+status=FAILURE exit_code=1 total=42 from=23 waited=exited
+...
+```
+
+Underneath, the server follows each task through overseer's own
+`Task:subscribe` events, so a restart between two checks reads as a restart
+rather than a stop.
+
+Clients without MCP tasks get a shell command instead, from a second entry
+point:
 
 ```
 overseer-nvim-mcp wait <task> [--match <regex>] [--lines <n>] [--timeout <secs>]
@@ -439,8 +464,9 @@ the tools take. `--match` returns on a matching output line instead, which is
 how you wait for a dev server to come up.
 
 The task itself is unchanged. `overseer_run` starts it in Neovim and it shows up
-in your list as usual. The agent runs `wait` as a background shell command,
-keeps working, and gets woken with the output when the task ends:
+in your list as usual. The agent runs `wait` as a background shell command, if
+its shell tool can, keeps working, and gets woken with the output when the task
+ends:
 
 ```
 overseer_run  { cmd: [...], name: "wait demo" }   ->  { id: 114, status: RUNNING }

@@ -65,6 +65,7 @@ end
 -- status and exit_code ride along so the caller learns about a dead task
 -- from the tail itself.
 local res = {
+  id = task.id,
   lines = {},
   from = 0,
   total = last,

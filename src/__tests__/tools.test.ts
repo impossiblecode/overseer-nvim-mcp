@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { formatTail } from "../format.ts";
 import { registerTools } from "../tools.ts";
 
-test("registers all seven overseer tools", () => {
+test("registers all eight overseer tools", () => {
   const server = new McpServer({ name: "overseer", version: "0.1.0" });
   const names: string[] = [];
   const orig = server.registerTool.bind(server);
@@ -20,6 +20,7 @@ test("registers all seven overseer tools", () => {
       "overseer_run",
       "overseer_stop",
       "overseer_tail",
+      "overseer_wait",
       "overseer_list_templates",
     ].sort(),
   );
@@ -54,6 +55,26 @@ test("formatTail keeps exit_code 0 visible rather than dropping it as falsy", ()
   expect(formatTail({ lines: [], from: 0, total: 0, status: "SUCCESS", exit_code: 0 })).toContain(
     "exit_code=0",
   );
+});
+
+test("overseer_run and overseer_restart take wait, match, timeout_ms and lines", () => {
+  const server = new McpServer({ name: "overseer", version: "0.1.0" });
+  const shapes: Record<string, Record<string, unknown>> = {};
+  const orig = server.registerTool.bind(server);
+  server.registerTool = (
+    name: string,
+    config: { inputSchema?: { shape: Record<string, unknown> } },
+    cb: never,
+  ) => {
+    shapes[name] = config.inputSchema?.shape ?? {};
+    return orig(name, config as never, cb);
+  };
+  registerTools(server);
+  for (const tool of ["overseer_run", "overseer_restart"]) {
+    expect(Object.keys(shapes[tool]!), tool).toEqual(
+      expect.arrayContaining(["wait", "match", "timeout_ms", "lines"]),
+    );
+  }
 });
 
 test("overseer_run description states the lifetime boundary", () => {

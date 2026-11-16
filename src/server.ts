@@ -6,6 +6,7 @@ import { insideNvim } from "./nvim.ts";
 import { registerPrompts } from "./prompts.ts";
 import { registerResources } from "./resources.ts";
 import { registerTools } from "./tools.ts";
+import { registerTaskHandlers, TASKS_EXTENSION } from "./wait-task.ts";
 
 /**
  * The node binary as it was launched. execPath has its symlinks resolved, so it
@@ -54,7 +55,8 @@ const WAIT_CMD =
  */
 export const INSTRUCTIONS = `Long-running commands belong in overseer, not the shell.
 
-Start dev servers, file watchers and --watch test runs with overseer_run. They
+Start dev servers, file watchers, --watch test runs, and builds or test runs
+long enough that you would otherwise wait on them, with overseer_run. They
 then appear in the user's own task list, the user can stop them from it, and
 their process trees are torn down properly rather than orphaned when the session
 ends. A command started in your shell tool has none of that, and the user cannot
@@ -69,11 +71,18 @@ that matches, run it by name instead of reconstructing the command. If an entry
 already has running_task_id, the user has it running; tail that rather than
 starting a second one on top of it.
 
-Do not poll in a loop. For a wait of a few seconds, use overseer_tail's
-wait_for. For anything longer, and for any task you expect to finish on its own
-(a build, a test run, a migration), do not wait inside a tool call at all: a
-tool call cannot be backgrounded, so the conversation stalls for as long as the
-task runs. Run this instead, as a BACKGROUND shell command if your shell tool
+Do not poll in a loop. To be told when a task you start ends, pass wait: true
+to overseer_run (or overseer_restart); for a dev server, pass match with a
+pattern for its ready line instead. Where your client supports MCP tasks, the
+call returns a task that runs in the background, and its result arrives when
+the overseer task exits, fails, is stopped, restarted or disposed, or when
+match appears. Cancelling that task stops the overseer task. For a task you did
+not start, overseer_wait does the same and leaves the task running when
+cancelled. For a wait of a few seconds, overseer_tail's wait_for is simpler,
+but it holds up the conversation for as long as it waits.
+
+Where your client does not support MCP tasks, these calls return at once with
+this command, which you run as a BACKGROUND shell command if your shell tool
 has one:
 
   ${WAIT_CMD} wait <task> [--match <regex>] [--lines <n>] [--timeout <secs>]
@@ -107,7 +116,7 @@ clean up only those.`;
 /**
  * Build the server. When not inside nvim ($NVIM unset), register nothing:
  * the server exists but exposes no tools, so non-nvim sessions see nothing.
- * `onRegister` is a test seam for observing which tools were registered.
+ * `onRegister` lets tests see which tools were registered.
  */
 export function buildServer(onRegister?: (name: string) => void): McpServer {
   const inside = insideNvim();
@@ -115,7 +124,12 @@ export function buildServer(onRegister?: (name: string) => void): McpServer {
     { name: "overseer", version: pkg.version },
     // Withheld outside nvim for the same reason the tools are: a session that
     // gets no tools should not be told how to use them.
-    inside ? { instructions: INSTRUCTIONS } : undefined,
+    inside
+      ? {
+          instructions: INSTRUCTIONS,
+          capabilities: { extensions: { [TASKS_EXTENSION]: {} } },
+        }
+      : undefined,
   );
   if (inside) {
     if (onRegister) {
@@ -125,7 +139,8 @@ export function buildServer(onRegister?: (name: string) => void): McpServer {
         return orig(name, ...(rest as [never, never]));
       };
     }
-    registerTools(server);
+    registerTools(server, WAIT_CMD);
+    registerTaskHandlers(server);
     // Prompts and resources are gated with the tools: outside nvim there is
     // nothing to describe and nothing to read.
     registerPrompts(server);

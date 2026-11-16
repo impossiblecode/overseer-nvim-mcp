@@ -39,7 +39,9 @@ test("instructions state when to use the server, not how each tool works", () =>
 });
 
 // The only place the model can learn the wait CLI exists.
-test("instructions point at the wait subcommand, and say to background it", () => {
+test("instructions point at overseer_wait and the wait subcommand, and say to background it", () => {
+  expect(INSTRUCTIONS).toMatch(/wait: true/);
+  expect(INSTRUCTIONS).toMatch(/overseer_wait/);
   expect(INSTRUCTIONS).toMatch(/wait <task>/);
   expect(INSTRUCTIONS).toMatch(/background/i);
   expect(INSTRUCTIONS).toMatch(/--match/);
@@ -112,7 +114,7 @@ test("registers tools when $NVIM is set", () => {
     process.env.NVIM = "/tmp/fake-nvim.sock";
     const names: string[] = [];
     buildServer((n) => names.push(n));
-    expect(names.length).toBe(7);
+    expect(names.length).toBe(8);
   } finally {
     if (saved === undefined) delete process.env.NVIM;
     else process.env.NVIM = saved;
@@ -133,7 +135,12 @@ const toolsOf = (s: McpServer) =>
 // removes a user consent gate.
 test("read-only tools carry readOnlyHint; mutating tools never do", () => {
   const tools = withNvim("/tmp/fake-nvim.sock", () => toolsOf(buildServer()));
-  for (const name of ["overseer_list_tasks", "overseer_list_templates", "overseer_tail"]) {
+  for (const name of [
+    "overseer_list_tasks",
+    "overseer_list_templates",
+    "overseer_tail",
+    "overseer_wait",
+  ]) {
     expect(tools[name]?.annotations?.readOnlyHint, name).toBe(true);
   }
   for (const name of ["overseer_run", "overseer_stop", "overseer_restart", "overseer_dispose"]) {

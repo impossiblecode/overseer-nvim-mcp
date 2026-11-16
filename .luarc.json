@@ -16,7 +16,11 @@
       "started_by_us",
       "guard",
       "dispose_component",
-      "unstartable"
+      "unstartable",
+      "journal_follow",
+      "journal_note",
+      "journal_seq",
+      "journal_get"
     ]
   }
 }

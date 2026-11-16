@@ -38,6 +38,8 @@ export type Template = {
 };
 
 export type TailResult = {
+  /** The task the selector resolved to. */
+  id?: number;
   lines: string[];
   /** 1-based index of the first returned line. Greater than `since` + 1 means a gap. */
   from: number;
@@ -46,7 +48,7 @@ export type TailResult = {
   status: string;
   exit_code?: number;
   /** Why a wait ended. Absent when no wait was requested. */
-  waited?: "matched" | "exited" | "timeout";
+  waited?: "matched" | "exited" | "timeout" | "stopped" | "restarted" | "disposed";
 };
 
 export type TailOpts = {
@@ -59,16 +61,47 @@ export type TailOpts = {
 export type RunResult = {
   id: number;
   name: string;
+  /** Event-log position taken before the task started. */
+  seq: number;
   status?: string;
   exit_code?: number;
   lines?: string[];
+};
+
+export type Diagnostic = {
+  filename?: string;
+  lnum?: number;
+  col?: number;
+  type?: string;
+  text: string;
+};
+
+/** One entry of the lifecycle log nvim keeps for followed tasks. */
+export type TaskEvent = {
+  seq: number;
+  kind: "complete" | "reset" | "dispose" | "restart_requested";
+  /** On complete: SUCCESS, FAILURE or CANCELED. */
+  status?: string;
+  exit_code?: number;
+  /** On complete: up to 20 of the task's parsed diagnostics. */
+  diagnostics?: Diagnostic[];
+  diagnostics_total?: number;
+  /** On dispose: the task was still running, so the dispose stopped it. */
+  while_running?: boolean;
+};
+
+export type TaskEvents = {
+  seq: number;
+  /** False when the log has never followed this task id. */
+  known: boolean;
+  events: TaskEvent[];
 };
 
 const WAIT_POLL_MS = 250;
 const WAIT_DEFAULT_MS = 15_000;
 const WAIT_MAX_MS = 120_000;
 const MATCH_BUDGET_MS = 100;
-const WAIT_CLI_DEFAULT_MS = 60 * 60_000;
+export const WAIT_CLI_DEFAULT_MS = 60 * 60_000;
 const SETTLE_DEFAULT_MS = 1_500;
 const SETTLE_POLL_MS = 100;
 /** overseer's own on_complete_dispose default */
@@ -134,6 +167,21 @@ export type Diagnosis = {
  */
 export async function nvimCwd(): Promise<string> {
   return exec<string>(LUA.NVIM_CWD);
+}
+
+export async function nvimPid(): Promise<number> {
+  return exec<number>(LUA.NVIM_PID);
+}
+
+/** Idempotent. Returns the log position as of now. */
+export async function watchTask(selector: number | string): Promise<{ id: number; seq: number }> {
+  return exec(LUA.WATCH, [selector]);
+}
+
+export async function taskEvents(id: number, after: number): Promise<TaskEvents> {
+  const res = await exec<TaskEvents>(LUA.EVENTS, [id, after]);
+  // an empty Lua table can arrive as a map
+  return { ...res, events: Array.isArray(res.events) ? res.events : [] };
 }
 
 /**
@@ -217,7 +265,7 @@ export async function waitForTask(
  * .test() with a catastrophically backtracking pattern blocks the event loop,
  * and the wait deadline is checked on that same loop, so it would never fire.
  */
-function matchesAny(pattern: RegExp, lines: string[]): boolean {
+export function matchesAny(pattern: RegExp, lines: string[]): boolean {
   try {
     return vm.runInContext(
       "lines.some((line) => pattern.test(line))",
@@ -300,7 +348,7 @@ export async function run(opts: {
 export async function restart(
   selector: number | string,
   force = false,
-): Promise<{ id: number; status: string }> {
+): Promise<{ id: number; status: string; seq: number }> {
   return exec(LUA.RESTART, [selector, force]);
 }
 

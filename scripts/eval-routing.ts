@@ -20,9 +20,10 @@
  *
  * Usage: pnpm eval:routing [--agent claude] [--model NAME] [--runs 3]
  *                          [--jobs 4] [--only substring] [--json FILE]
- *                          [--dump DIR]
+ *                          [--dump DIR] [--context-file PATH]
  *
- * --dump writes each run's raw transcript to DIR.
+ * --dump writes each run's raw transcript to DIR. --context-file copies PATH
+ * into every workspace under its own name, e.g. an AGENTS.md for codex.
  *
  * The copilot adapter reaches non-Claude models through one binary:
  *   pnpm eval:routing --agent copilot --model gemini-3.1-pro-preview
@@ -40,11 +41,12 @@
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const DIST = join(ROOT, "dist", "overseer-nvim-mcp.mjs");
+// EVAL_BUNDLE points at another build, e.g. to compare against a release
+const DIST = process.env.EVAL_BUNDLE ?? join(ROOT, "dist", "overseer-nvim-mcp.mjs");
 const MINIMAL_INIT = join(ROOT, "ci", "minimal_init.lua");
 const QUERIES = join(ROOT, "scripts", "eval-routing.queries.json");
 const OVERSEER_PATH = process.env.OVERSEER_PATH ?? "/tmp/overseer";
@@ -79,6 +81,8 @@ interface Args {
   json?: string;
   /** Directory to write each run's raw transcript to. */
   dump?: string;
+  /** Copied into every workspace under its own name (AGENTS.md, GEMINI.md, CLAUDE.md). */
+  contextFile?: string;
 }
 
 interface Task {
@@ -181,6 +185,9 @@ function parseArgs(argv: string[]): Args {
       case "--dump":
         out.dump = value;
         break;
+      case "--context-file":
+        out.contextFile = value;
+        break;
       default:
         throw new Error(`unknown arg: ${argv[i]}`);
     }
@@ -219,15 +226,29 @@ function claudeCalledRouteTool(stdout: string): boolean {
   return found;
 }
 
+const FOLLOWING_TOOLS = new Set(["mcp__overseer__overseer_run", "mcp__overseer__overseer_restart"]);
+
 /**
- * A foreground wait blocks the conversation like wait_for does, so only
- * run_in_background counts.
+ * Following a task as an MCP task (wait or match on run/restart, or
+ * overseer_wait), or the wait CLI as a background shell command. A foreground
+ * wait blocks the conversation like wait_for does, so it doesn't count.
  */
 function claudeBackgroundedWait(stdout: string): boolean {
   let found = false;
   const walk = (node: unknown): void => {
     if (found || node === null || typeof node !== "object") return;
     const record = node as Record<string, unknown>;
+    if (record.type === "tool_use" && typeof record.name === "string") {
+      const input = record.input as { wait?: unknown; match?: unknown } | undefined;
+      const follows =
+        record.name === "mcp__overseer__overseer_wait" ||
+        (FOLLOWING_TOOLS.has(record.name) &&
+          (input?.wait === true || typeof input?.match === "string"));
+      if (follows) {
+        found = true;
+        return;
+      }
+    }
     if (record.type === "tool_use" && record.name === "Bash") {
       const input = record.input as { command?: unknown; run_in_background?: unknown } | undefined;
       const command = typeof input?.command === "string" ? input.command : "";
@@ -440,10 +461,18 @@ function waitForSocket(path: string, timeoutMs: number): Promise<boolean> {
  * leaks state: run one's dev server shows up as running_task_id for run two,
  * which then (correctly) tails it instead of starting anything.
  */
-async function invoke(agent: Agent, query: string, model?: string): Promise<string | null> {
+async function invoke(
+  agent: Agent,
+  query: string,
+  model?: string,
+  contextFile?: string,
+): Promise<string | null> {
   const ws = mkdtempSync(join(tmpdir(), "eval-routing-"));
   for (const [name, content] of Object.entries(WORKSPACE_FILES)) {
     writeFileSync(join(ws, name), content);
+  }
+  if (contextFile !== undefined) {
+    writeFileSync(join(ws, basename(contextFile)), readFileSync(contextFile, "utf8"));
   }
   const sock = join(ws, "nvim.sock");
   const nvim = spawn("nvim", ["--headless", "-u", MINIMAL_INIT, "--listen", sock], {
@@ -566,7 +595,7 @@ async function main(): Promise<number> {
   const restore = agent.setup?.();
   try {
     await pool(tasks, args.jobs, async (task) => {
-      const stdout = await invoke(agent, task.query.query, args.model);
+      const stdout = await invoke(agent, task.query.query, args.model, args.contextFile);
       if (args.dump !== undefined && stdout !== null) {
         mkdirSync(args.dump, { recursive: true });
         // by query text: --only renumbers from zero, so indexes would collide
