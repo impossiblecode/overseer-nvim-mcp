@@ -4,7 +4,7 @@ An [MCP](https://modelcontextprotocol.io) server that gives a coding agent the
 same control over [overseer.nvim](https://github.com/stevearc/overseer.nvim)
 tasks that you have: list, tail, run, restart, stop, and dispose.
 
-![An agent starts a dev server as an overseer task; the user watches its output in the task list and stops it themselves](https://raw.githubusercontent.com/impossiblecode/overseer-nvim-mcp/main/.github/demo.gif)
+![An agent starts a slow test run as an overseer task and follows it in the background; it answers another question while the run shows in the task list, then reports the failure when the task ends](https://raw.githubusercontent.com/impossiblecode/overseer-nvim-mcp/main/.github/demo-background-wait.gif)
 
 [![npm](https://img.shields.io/npm/v/overseer-nvim-mcp)](https://www.npmjs.com/package/overseer-nvim-mcp)
 [![CI](https://github.com/impossiblecode/overseer-nvim-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/impossiblecode/overseer-nvim-mcp/actions/workflows/ci.yml)
