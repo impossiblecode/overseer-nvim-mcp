@@ -30,7 +30,7 @@
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@10.34.9",
+  "packageManager": "pnpm@12.21.0",
   "bin": {
     "overseer-nvim-mcp": "dist/overseer-nvim-mcp.mjs"
   },
